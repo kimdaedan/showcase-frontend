@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react'; // Impor useRef
+import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image'; // Import Image untuk background
 import Navbar from '../../components/Navbar';
 
 // Tipe untuk data form
@@ -13,7 +14,6 @@ type FormData = {
   nim_ketua: string;
 };
 
-// Tipe untuk respons error dari backend
 type ErrorResponse = {
   message: string;
 };
@@ -32,7 +32,6 @@ export default function UploadPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [youtubeLink, setYoutubeLink] = useState('');
 
-  // Buat ref untuk input file agar bisa di-reset secara programatik
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [error, setError] = useState<string>('');
@@ -80,7 +79,6 @@ export default function UploadPage() {
       return;
     }
 
-    // Validasi input form dasar
     if (!formData.title || !formData.nama_ketua) {
       setError('Judul karya dan Nama Ketua wajib diisi.');
       setIsLoading(false);
@@ -107,7 +105,6 @@ export default function UploadPage() {
         setIsLoading(false);
         return;
       }
-      // Tambahkan validasi sederhana untuk link YouTube
       if (!youtubeLink.startsWith('http')) {
         setError('Link YouTube harus diawali dengan http:// atau https://');
         setIsLoading(false);
@@ -125,28 +122,25 @@ export default function UploadPage() {
         body: data,
       });
 
-      const result = await response.json(); // Pastikan selalu mencoba membaca JSON
+      const result = await response.json();
 
       if (!response.ok) {
-        // Asumsikan backend selalu mengirim JSON error
         throw new Error((result as ErrorResponse).message || 'Terjadi kesalahan saat mengunggah karya.');
       }
 
       setSuccess('Karya berhasil diunggah!');
-      // Reset form dan input file
       setFormData({ title: '', description: '', nama_ketua: '', nim_ketua: '' });
       setSelectedFile(null);
       setYoutubeLink('');
-      if (fileInputRef.current) { // Reset input file visual
+      if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
 
     } catch (err) {
-      console.error('Fetch error:', err); // Log error asli untuk debugging
+      console.error('Fetch error:', err);
       if (err instanceof Error) {
-        // Cek jika error dari JSON parse (ini yang menyebabkan "Unexpected token '<'")
         if (err.message.includes('JSON')) {
-          setError('Terjadi masalah dengan server (bukan JSON yang diharapkan). Pastikan backend Anda berjalan dan rutenya benar.');
+          setError('Terjadi masalah dengan server. Pastikan backend Anda berjalan.');
         } else {
           setError(err.message);
         }
@@ -160,160 +154,225 @@ export default function UploadPage() {
 
   if (isCheckingAuth) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-lg">Memverifikasi sesi...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[#424b24]">
+        <p className="text-lg text-white">Memverifikasi sesi...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+    <div className="flex min-h-screen flex-col font-sans relative">
+      {/* 1. Background Image Layer */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/future.jpg"
+          alt="Background"
+          fill
+          className="object-cover"
+          quality={100}
+          priority
+        />
+        {/* Overlay hitam transparan agar form lebih menonjol */}
+        {/* <div className="absolute inset-0 bg-black/20"></div> */}
+      </div>
 
-      <div className="mx-auto max-w-2xl p-6">
-        <h2 className="mb-6 text-center text-3xl font-bold text-gray-900">
-          Unggah Karya Baru Anda
-        </h2>
+      {/* Navbar Global */}
+      <div className="relative z-20">
+        <Navbar />
+      </div>
 
-        <form onSubmit={handleSubmit} className="rounded-lg bg-white p-8 shadow-md space-y-5">
-          {/* Data Teks (Tidak ada perubahan signifikan) */}
-          <div>
-            <label htmlFor="title" className="mb-1 block text-sm font-medium text-gray-700">Judul Karya</label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleTextChange}
-              required
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
+      {/* Konten Utama */}
+      <div className="relative z-10 flex-grow px-4 py-10 flex justify-center items-center">
+        <div className="w-full max-w-2xl">
 
-          <div>
-            <label htmlFor="description" className="mb-1 block text-sm font-medium text-gray-700">Deskripsi</label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleTextChange}
-              rows={4}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
+          {/* Judul Halaman (Putih agar kontras dengan background hijau) */}
+          <h2 className="mb-6 text-center text-3xl font-bold text-white drop-shadow-md">
+            Unggah Karya Baru Anda
+          </h2>
 
-          <div>
-            <label htmlFor="nama_ketua" className="mb-1 block text-sm font-medium text-gray-700">Nama Ketua</label>
-            <input
-              type="text"
-              id="nama_ketua"
-              name="nama_ketua"
-              value={formData.nama_ketua}
-              onChange={handleTextChange}
-              required
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="rounded-lg bg-white p-8 shadow-2xl space-y-6">
 
-          <div>
-            <label htmlFor="nim_ketua" className="mb-1 block text-sm font-medium text-gray-700">NIM Ketua</label>
-            <input
-              type="text"
-              id="nim_ketua"
-              name="nim_ketua"
-              value={formData.nim_ketua}
-              onChange={handleTextChange}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
-
-          <hr />
-
-          {/* Pilihan Jenis Karya */}
-          <fieldset>
-            <legend className="mb-2 block text-sm font-medium text-gray-700">Jenis Karya</legend>
-            <div className="flex gap-4">
-              <div className="flex items-center">
-                <input
-                  id="type_file"
-                  name="uploadType"
-                  type="radio"
-                  value="file"
-                  checked={uploadType === 'file'}
-                  onChange={() => setUploadType('file')}
-                  className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                />
-                <label htmlFor="type_file" className="ml-2 block text-sm text-gray-900">Upload File (Gambar/PDF)</label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="type_youtube"
-                  name="uploadType"
-                  type="radio"
-                  value="youtube"
-                  checked={uploadType === 'youtube'}
-                  onChange={() => setUploadType('youtube')}
-                  className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                />
-                <label htmlFor="type_youtube" className="ml-2 block text-sm text-gray-900">Link YouTube</label>
-              </div>
-            </div>
-          </fieldset>
-
-          {/* Input Kondisional */}
-          {uploadType === 'file' ? (
+            {/* Input: Judul Karya */}
             <div>
-              <label htmlFor="karyaFile" className="mb-1 block text-sm font-medium text-gray-700">Upload File</label>
+              <label htmlFor="title" className="mb-1.5 block text-sm font-bold text-gray-700">
+                Judul Karya
+              </label>
               <input
-                type="file"
-                id="karyaFile"
-                name="karyaFile"
-                onChange={handleFileChange}
-                accept=".jpg,.jpeg,.png,.pdf"
-                ref={fileInputRef} // Tambahkan ref di sini
-                className="w-full text-sm text-gray-500
-                           file:mr-4 file:rounded-md file:border-0
-                           file:bg-blue-50 file:py-2 file:px-4
-                           file:text-sm file:font-semibold file:text-blue-700
-                           hover:file:bg-blue-100"
-              />
-              <p className="mt-1 text-xs text-gray-500">Maks 10MB. Tipe file: JPG, PNG, atau PDF.</p>
-            </div>
-          ) : (
-            <div>
-              <label htmlFor="youtube_link" className="mb-1 block text-sm font-medium text-gray-700">Link YouTube</label>
-              <input
-                type="url"
-                id="youtube_link"
-                name="youtube_link"
-                value={youtubeLink}
-                onChange={(e) => setYoutubeLink(e.target.value)}
-                placeholder="https://www.youtube.com/watch?v=..."
-                className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                type="text"
+                id="title"
+                name="title"
+                value={formData.title}
+                onChange={handleTextChange}
+                required
+                placeholder="Contoh: Aplikasi E-Voting Berbasis Blockchain"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
+                           focus:border-blue-500 focus:ring-2 focus:ring-blue-500
+                           text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
               />
             </div>
-          )}
 
-          {/* Tombol Submit */}
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isLoading ? 'Mengunggah...' : 'Submit Karya'}
-            </button>
-          </div>
+            {/* Input: Deskripsi */}
+            <div>
+              <label htmlFor="description" className="mb-1.5 block text-sm font-bold text-gray-700">
+                Deskripsi
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleTextChange}
+                rows={4}
+                placeholder="Jelaskan fitur utama, teknologi yang digunakan, dan tujuan dari karya ini..."
+                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
+                           focus:border-blue-500 focus:ring-2 focus:ring-blue-500
+                           text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
+              />
+            </div>
 
-          {/* Tampilkan Pesan Error atau Sukses */}
-          {error && (
-            <p className="text-center text-sm text-red-600">{error}</p>
-          )}
-          {success && (
-            <p className="text-center text-sm text-green-600">{success}</p>
-          )}
+            {/* Grid untuk Nama & NIM Ketua agar sejajar */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="nama_ketua" className="mb-1.5 block text-sm font-bold text-gray-700">
+                  Nama Ketua
+                </label>
+                <input
+                  type="text"
+                  id="nama_ketua"
+                  name="nama_ketua"
+                  value={formData.nama_ketua}
+                  onChange={handleTextChange}
+                  required
+                  placeholder="Contoh: Budi Santoso"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
+                             focus:border-blue-500 focus:ring-2 focus:ring-blue-500
+                             text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
+                />
+              </div>
 
-        </form>
+              <div>
+                <label htmlFor="nim_ketua" className="mb-1.5 block text-sm font-bold text-gray-700">
+                  NIM Ketua
+                </label>
+                <input
+                  type="text"
+                  id="nim_ketua"
+                  name="nim_ketua"
+                  value={formData.nim_ketua}
+                  onChange={handleTextChange}
+                  placeholder="Contoh: 33120010"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
+                             focus:border-blue-500 focus:ring-2 focus:ring-blue-500
+                             text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
+                />
+              </div>
+            </div>
+
+            <hr className="border-gray-200" />
+
+            {/* Pilihan Jenis Karya */}
+            <fieldset>
+              <legend className="mb-3 block text-sm font-bold text-gray-700">Jenis Karya</legend>
+              <div className="flex gap-6">
+                <div className="flex items-center">
+                  <input
+                    id="type_file"
+                    name="uploadType"
+                    type="radio"
+                    value="file"
+                    checked={uploadType === 'file'}
+                    onChange={() => setUploadType('file')}
+                    className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <label htmlFor="type_file" className="ml-2 block text-sm font-medium text-gray-900">
+                    Upload File (Gambar/PDF)
+                  </label>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    id="type_youtube"
+                    name="uploadType"
+                    type="radio"
+                    value="youtube"
+                    checked={uploadType === 'youtube'}
+                    onChange={() => setUploadType('youtube')}
+                    className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                  />
+                  <label htmlFor="type_youtube" className="ml-2 block text-sm font-medium text-gray-900">
+                    Link YouTube
+                  </label>
+                </div>
+              </div>
+            </fieldset>
+
+            {/* Input Kondisional */}
+            {uploadType === 'file' ? (
+              <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
+                <label htmlFor="karyaFile" className="mb-2 block text-sm font-bold text-gray-700">
+                  Pilih File
+                </label>
+                <input
+                  type="file"
+                  id="karyaFile"
+                  name="karyaFile"
+                  onChange={handleFileChange}
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  ref={fileInputRef}
+                  className="w-full text-sm text-gray-500
+                             file:mr-4 file:rounded-md file:border-0
+                             file:bg-blue-600 file:py-2.5 file:px-4
+                             file:text-sm file:font-semibold file:text-white
+                             hover:file:bg-blue-700 cursor-pointer"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  Format: JPG, PNG, atau PDF. Maksimal ukuran: 10MB.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label htmlFor="youtube_link" className="mb-1.5 block text-sm font-bold text-gray-700">
+                  Link YouTube
+                </label>
+                <input
+                  type="url"
+                  id="youtube_link"
+                  name="youtube_link"
+                  value={youtubeLink}
+                  onChange={(e) => setYoutubeLink(e.target.value)}
+                  placeholder="Contoh: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
+                             focus:border-blue-500 focus:ring-2 focus:ring-blue-500
+                             text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
+                />
+              </div>
+            )}
+
+            {/* Tombol Submit */}
+            <div className="pt-4">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full rounded-md border border-transparent bg-blue-600 px-4 py-3 text-base font-bold text-white shadow-md
+                           hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                           disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+              >
+                {isLoading ? 'Sedang Mengunggah...' : 'Submit Karya'}
+              </button>
+            </div>
+
+            {/* Pesan Status */}
+            {error && (
+              <div className="rounded-md bg-red-50 p-3">
+                <p className="text-center text-sm font-medium text-red-600">{error}</p>
+              </div>
+            )}
+            {success && (
+              <div className="rounded-md bg-green-50 p-3">
+                <p className="text-center text-sm font-medium text-green-600">{success}</p>
+              </div>
+            )}
+
+          </form>
+        </div>
       </div>
     </div>
   );
