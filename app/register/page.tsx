@@ -1,12 +1,10 @@
-// Wajib ada di paling atas
 'use client';
 
 import { useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react'; // Impor Tipe React
+import type { ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Definisikan tipe untuk data form kita
 type FormData = {
   name: string;
   email: string;
@@ -14,7 +12,6 @@ type FormData = {
   major: string;
 };
 
-// Definisikan tipe untuk respons error
 type ErrorResponse = {
   message: string;
 };
@@ -26,12 +23,11 @@ export default function RegisterPage() {
     password: '',
     major: '',
   });
-  const [error, setError] = useState<string>(''); // Tipe string
-  const [success, setSuccess] = useState<string>(''); // Tipe string
-  const [isLoading, setIsLoading] = useState<boolean>(false); // Tipe boolean
+  const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const router = useRouter();
 
-  // Tambahkan tipe untuk event: ChangeEvent<HTMLInputElement>
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -40,7 +36,6 @@ export default function RegisterPage() {
     }));
   };
 
-  // Tambahkan tipe untuk event: FormEvent<HTMLFormElement>
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -65,7 +60,6 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Beri tahu TypeScript bahwa 'data' adalah ErrorResponse
         throw new Error((data as ErrorResponse).message || 'Gagal mendaftar');
       }
 
@@ -77,7 +71,6 @@ export default function RegisterPage() {
       }, 2000);
 
     } catch (err) {
-      // 'err' bisa bertipe 'unknown' atau 'any', kita perlu mengeceknya
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -90,19 +83,20 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
-        <h2 className="mb-6 text-center text-3xl font-bold text-gray-900">
+      <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl border border-gray-100">
+
+        <h2 className="mb-2 text-center text-3xl font-bold text-gray-900">
           Buat Akun Baru
         </h2>
+        <p className="mb-8 text-center text-sm text-gray-500">
+          Daftar untuk mulai memamerkan karya Anda
+        </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ... (Tidak ada perubahan pada JSX/HTML di sini) ... */}
-          {/* Form Input untuk Nama */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+
+          {/* Input Nama Lengkap */}
           <div>
-            <label
-              htmlFor="name"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-gray-700">
               Nama Lengkap
             </label>
             <input
@@ -112,16 +106,16 @@ export default function RegisterPage() {
               value={formData.name}
               onChange={handleChange}
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              placeholder="Contoh: Budi Santoso"
+              className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm
+                         focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500
+                         text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
             />
           </div>
 
-          {/* Form Input untuk Email */}
+          {/* Input Email */}
           <div>
-            <label
-              htmlFor="email"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">
               Email
             </label>
             <input
@@ -131,16 +125,16 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={handleChange}
               required
-              className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              placeholder="nama@contoh.com"
+              className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm
+                         focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500
+                         text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
             />
           </div>
 
-          {/* Form Input untuk Password */}
+          {/* Input Password */}
           <div>
-            <label
-              htmlFor="password"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-gray-700">
               Password
             </label>
             <input
@@ -151,16 +145,16 @@ export default function RegisterPage() {
               onChange={handleChange}
               required
               minLength={6}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              placeholder="••••••••"
+              className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm
+                         focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500
+                         text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
             />
           </div>
 
-          {/* Form Input untuk Jurusan */}
+          {/* Input Jurusan */}
           <div>
-            <label
-              htmlFor="major"
-              className="mb-1 block text-sm font-medium text-gray-700"
-            >
+            <label htmlFor="major" className="mb-1.5 block text-sm font-medium text-gray-700">
               Jurusan (Opsional)
             </label>
             <input
@@ -169,35 +163,56 @@ export default function RegisterPage() {
               name="major"
               value={formData.major}
               onChange={handleChange}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+              placeholder="Contoh: Teknik Informatika"
+              className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm
+                         focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500
+                         text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
             />
           </div>
 
           {/* Tombol Submit */}
-          <div>
+          <div className="pt-2">
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-md border border-transparent bg-blue-600 px-4 py-3 text-base font-bold text-white shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
             >
               {isLoading ? 'Mendaftar...' : 'Register'}
             </button>
           </div>
-          {/* ... (Tampilan error/sukses tidak berubah) ... */}
-           {error && (
-            <p className="text-center text-sm text-red-600">{error}</p>
+
+          {error && (
+            <div className="rounded-md bg-red-50 p-3 border border-red-100">
+              <p className="text-center text-sm font-medium text-red-600">{error}</p>
+            </div>
           )}
           {success && (
-            <p className="text-center text-sm text-green-600">{success}</p>
+            <div className="rounded-md bg-green-50 p-3 border border-green-100">
+              <p className="text-center text-sm font-medium text-green-600">{success}</p>
+            </div>
           )}
         </form>
 
-        <p className="mt-6 text-center text-sm text-gray-600">
-          Sudah punya akun?{' '}
-          <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-            Login di sini
+        <div className="mt-8 border-t border-gray-200 pt-6 text-center space-y-4">
+          <p className="text-sm text-gray-600">
+            Sudah punya akun?{' '}
+            <Link href="/login" className="font-bold text-blue-600 hover:text-blue-800 hover:underline">
+              Login di sini
+            </Link>
+          </p>
+
+          {/* Tombol Kembali ke Beranda */}
+          <Link
+            href="/"
+            className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Kembali ke Beranda
           </Link>
-        </p>
+        </div>
+
       </div>
     </div>
   );

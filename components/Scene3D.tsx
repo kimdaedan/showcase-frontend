@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-// Menggunakan path import standar untuk Next.js
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 interface Scene3DProps {
@@ -13,10 +12,13 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
 
-  // Refs untuk kontrol state agar tidak memicu re-render React
+  // Ref untuk logika 3D (agar tidak re-render saat loop berjalan)
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const isDragging = useRef(false);
   const previousMousePosition = useRef({ x: 0, y: 0 });
+
+  // State untuk Visualisasi Tombol (Agar tombol di layar menyala saat ditekan)
+  const [activeKey, setActiveKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -25,51 +27,38 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl }) => {
     const width = mountRef.current.clientWidth;
     const height = mountRef.current.clientHeight;
 
-    // Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa0a0a0);
-    scene.fog = new THREE.Fog(0xa0a0a0, 10, 60); // Kabut lebih jauh
+    scene.fog = new THREE.Fog(0xa0a0a0, 10, 60);
 
-    // Camera
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-    // PENTING: Order 'YXZ' agar rotasi kamera seperti FPS (tidak miring/roll)
     camera.rotation.order = 'YXZ';
-    camera.position.set(0, 1.7, 5); // Tinggi mata manusia
+    camera.position.set(0, 1.7, 5);
 
-    // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio); // Agar tajam di layar HP/Retina
-    renderer.shadowMap.enabled = true; // Aktifkan bayangan
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // Bersihkan container sebelum append (penting untuk React Strict Mode)
     while (mountRef.current.firstChild) {
       mountRef.current.removeChild(mountRef.current.firstChild);
     }
     mountRef.current.appendChild(renderer.domElement);
 
-    // === 2. PENCAHAYAAN (Lighting) ===
+    // === 2. PENCAHAYAAN ===
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
     sunLight.position.set(10, 20, 10);
     sunLight.castShadow = true;
-    // Optimasi shadow map
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
-    sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 50;
-    sunLight.shadow.camera.left = -20;
-    sunLight.shadow.camera.right = 20;
-    sunLight.shadow.camera.top = 20;
-    sunLight.shadow.camera.bottom = -20;
     scene.add(sunLight);
 
-    // Grid Helper (Opsional: Lantai acuan)
     const grid = new THREE.GridHelper(100, 100, 0x555555, 0x999999);
-    grid.position.y = -0.01; // Sedikit di bawah 0 agar tidak z-fighting
+    grid.position.y = -0.01;
     scene.add(grid);
 
     // === 3. LOAD MODEL ===
@@ -78,35 +67,21 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl }) => {
       modelUrl,
       (gltf) => {
         const model = gltf.scene;
-
-        // Aktifkan bayangan untuk semua bagian model
         model.traverse((node) => {
           if ((node as THREE.Mesh).isMesh) {
             node.castShadow = true;
             node.receiveShadow = true;
-
-            // Opsional: Fix jika material terlihat gelap/rusak
-            // const mesh = node as THREE.Mesh;
-            // if (mesh.material) (mesh.material as THREE.Material).side = THREE.DoubleSide;
           }
         });
-
         scene.add(model);
-        console.log("✅ Model dimuat:", modelUrl);
       },
-      (xhr) => {
-        // Loading progress (bisa dipakai untuk UI loading bar jika mau)
-        // console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-      },
-      (error) => {
-        console.error('❌ Error memuat model:', error);
-      }
+      undefined,
+      (error) => console.error('Error loading model:', error)
     );
 
-    // === 4. KONTROL (Event Listeners) ===
+    // === 4. KONTROL INPUT ===
 
     const onMouseDown = (e: MouseEvent) => {
-      // Hanya aktifkan drag jika klik kiri (button 0)
       if (e.button === 0) {
         isDragging.current = true;
         previousMousePosition.current = { x: e.clientX, y: e.clientY };
@@ -121,94 +96,77 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl }) => {
       if (isDragging.current) {
         const deltaX = e.clientX - previousMousePosition.current.x;
         const deltaY = e.clientY - previousMousePosition.current.y;
-
         const sensitivity = 0.003;
 
-        // Rotasi Y (Kiri/Kanan) - Putar badan
         camera.rotation.y -= deltaX * sensitivity;
-
-        // Rotasi X (Atas/Bawah) - Angguk kepala
         camera.rotation.x -= deltaY * sensitivity;
 
-        // Batasi agar tidak bisa melihat terbalik (Clamp -90 sampai 90 derajat)
-        const maxPolarAngle = Math.PI / 2 - 0.1; // Sedikit kurang dari 90 derajat
+        const maxPolarAngle = Math.PI / 2 - 0.1;
         camera.rotation.x = Math.max(-maxPolarAngle, Math.min(maxPolarAngle, camera.rotation.x));
 
         previousMousePosition.current = { x: e.clientX, y: e.clientY };
       }
     };
 
+    // Update Ref dan State Visual
     const onKeyDown = (e: KeyboardEvent) => {
       keysPressed.current[e.code] = true;
+      // Update visual UI (hanya untuk WASD)
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
+        setActiveKey(e.code);
+      }
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
       keysPressed.current[e.code] = false;
+      setActiveKey(null);
     };
 
-    // Listeners di Canvas (untuk Mouse)
     const canvas = renderer.domElement;
     canvas.addEventListener('mousedown', onMouseDown);
-    // Listeners di Window (agar drag tidak lepas jika mouse keluar canvas)
     window.addEventListener('mouseup', onMouseUp);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
 
-
-    // === 5. GAME LOOP (Animation) ===
+    // === 5. ANIMASI ===
     const clock = new THREE.Clock();
 
     const animate = () => {
       requestRef.current = requestAnimationFrame(animate);
-
       const delta = clock.getDelta();
-      const moveSpeed = 4.0 * delta; // Kecepatan jalan (meter per detik)
+      const moveSpeed = 4.0 * delta;
 
-      // Hitung arah depan & samping berdasarkan arah kamera saat ini
       const forward = new THREE.Vector3();
       camera.getWorldDirection(forward);
-      forward.y = 0; // Kunci gerakan vertikal (agar tidak terbang)
+      forward.y = 0;
       forward.normalize();
 
       const right = new THREE.Vector3();
       right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
-      // Logika WASD
-      if (keysPressed.current['KeyW'] || keysPressed.current['ArrowUp']) {
-        camera.position.add(forward.multiplyScalar(moveSpeed));
-      }
-      if (keysPressed.current['KeyS'] || keysPressed.current['ArrowDown']) {
-        camera.position.add(forward.multiplyScalar(-moveSpeed));
-      }
-      if (keysPressed.current['KeyD'] || keysPressed.current['ArrowRight']) {
-        camera.position.add(right.multiplyScalar(moveSpeed));
-      }
-      if (keysPressed.current['KeyA'] || keysPressed.current['ArrowLeft']) {
-        camera.position.add(right.multiplyScalar(-moveSpeed));
-      }
+      if (keysPressed.current['KeyW'] || keysPressed.current['ArrowUp']) camera.position.add(forward.multiplyScalar(moveSpeed));
+      if (keysPressed.current['KeyS'] || keysPressed.current['ArrowDown']) camera.position.add(forward.multiplyScalar(-moveSpeed));
+      if (keysPressed.current['KeyD'] || keysPressed.current['ArrowRight']) camera.position.add(right.multiplyScalar(moveSpeed));
+      if (keysPressed.current['KeyA'] || keysPressed.current['ArrowLeft']) camera.position.add(right.multiplyScalar(-moveSpeed));
 
       renderer.render(scene, camera);
     };
 
     animate();
 
-    // === 6. HANDLE RESIZE ===
     const handleResize = () => {
       if (!mountRef.current) return;
-      const newWidth = mountRef.current.clientWidth;
-      const newHeight = mountRef.current.clientHeight;
-
-      camera.aspect = newWidth / newHeight;
+      const w = mountRef.current.clientWidth;
+      const h = mountRef.current.clientHeight;
+      camera.aspect = w / h;
       camera.updateProjectionMatrix();
-      renderer.setSize(newWidth, newHeight);
+      renderer.setSize(w, h);
     };
     window.addEventListener('resize', handleResize);
 
-    // === 7. CLEANUP (Saat komponen hilang) ===
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
-
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('mousemove', onMouseMove);
@@ -217,31 +175,83 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl }) => {
       canvas.removeEventListener('mousedown', onMouseDown);
 
       if (mountRef.current && renderer.domElement) {
-        // Cek apakah child masih ada sebelum remove
         if (mountRef.current.contains(renderer.domElement)) {
           mountRef.current.removeChild(renderer.domElement);
         }
       }
-
-      // Bebaskan memori GPU
       renderer.dispose();
-      scene.clear();
     };
   }, [modelUrl]);
+
+  // Helper untuk menghandle klik tombol on-screen
+  const handleBtnDown = (code: string) => {
+    keysPressed.current[code] = true;
+    setActiveKey(code);
+  };
+
+  const handleBtnUp = (code: string) => {
+    keysPressed.current[code] = false;
+    setActiveKey(null);
+  };
+
+  // Style class untuk tombol
+  const btnClass = (key: string) => `
+    w-10 h-10 flex items-center justify-center rounded-md font-bold text-sm select-none transition-colors border border-white/30
+    ${activeKey === key ? 'bg-blue-600 text-white shadow-[0_0_10px_rgba(37,99,235,0.5)]' : 'bg-black/50 text-white/80 hover:bg-black/70'}
+  `;
 
   return (
     <div
       ref={mountRef}
-      className="w-full h-full relative bg-gray-300 cursor-grab active:cursor-grabbing"
+      className="w-full h-full relative bg-gray-300 cursor-grab active:cursor-grabbing overflow-hidden"
     >
-      {/* UI Instruksi */}
-      <div className="absolute top-4 left-4 bg-black/70 text-white p-4 rounded-lg text-sm pointer-events-none select-none z-10 backdrop-blur-sm border border-white/20">
-        <h3 className="font-bold mb-1 text-yellow-400">Kontrol Pameran:</h3>
-        <ul className="space-y-1 text-gray-200">
-          <li>🖱️ <b>Klik Kiri + Geser</b> : Lihat Sekeliling</li>
-          <li>⌨️ <b>W / A / S / D</b> : Berjalan</li>
-        </ul>
+      {/* UI Instruksi (Atas Kiri) */}
+      <div className="absolute top-4 left-4 bg-black/60 text-white px-3 py-2 rounded text-xs pointer-events-none select-none z-10 backdrop-blur-sm">
+        <p>🖱️ <b>Drag</b> : Lihat</p>
+        <p>⌨️ <b>WASD</b> : Jalan</p>
       </div>
+
+      {/* UI Kontrol WASD (Bawah Kiri) */}
+      <div className="absolute bottom-6 left-6 flex flex-col items-center gap-1 z-20">
+        {/* Baris Atas: W */}
+        <div
+          className={btnClass('KeyW')}
+          onMouseDown={() => handleBtnDown('KeyW')}
+          onMouseUp={() => handleBtnUp('KeyW')}
+          onMouseLeave={() => handleBtnUp('KeyW')}
+          onTouchStart={() => handleBtnDown('KeyW')}
+          onTouchEnd={() => handleBtnUp('KeyW')}
+        >W</div>
+
+        {/* Baris Bawah: ASD */}
+        <div className="flex gap-1">
+          <div
+            className={btnClass('KeyA')}
+            onMouseDown={() => handleBtnDown('KeyA')}
+            onMouseUp={() => handleBtnUp('KeyA')}
+            onMouseLeave={() => handleBtnUp('KeyA')}
+            onTouchStart={() => handleBtnDown('KeyA')}
+            onTouchEnd={() => handleBtnUp('KeyA')}
+          >A</div>
+          <div
+            className={btnClass('KeyS')}
+            onMouseDown={() => handleBtnDown('KeyS')}
+            onMouseUp={() => handleBtnUp('KeyS')}
+            onMouseLeave={() => handleBtnUp('KeyS')}
+            onTouchStart={() => handleBtnDown('KeyS')}
+            onTouchEnd={() => handleBtnUp('KeyS')}
+          >S</div>
+          <div
+            className={btnClass('KeyD')}
+            onMouseDown={() => handleBtnDown('KeyD')}
+            onMouseUp={() => handleBtnUp('KeyD')}
+            onMouseLeave={() => handleBtnUp('KeyD')}
+            onTouchStart={() => handleBtnDown('KeyD')}
+            onTouchEnd={() => handleBtnUp('KeyD')}
+          >D</div>
+        </div>
+      </div>
+
     </div>
   );
 };

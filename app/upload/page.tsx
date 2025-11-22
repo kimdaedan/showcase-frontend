@@ -3,10 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image'; // Import Image untuk background
+import Image from 'next/image';
 import Navbar from '../../components/Navbar';
 
-// Tipe untuk data form
 type FormData = {
   title: string;
   description: string;
@@ -39,7 +38,7 @@ export default function UploadPage() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(true);
 
-  // Proteksi Halaman
+  // 1. Cek Token saat Load
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -73,12 +72,11 @@ export default function UploadPage() {
 
     const token = localStorage.getItem('token');
     if (!token) {
-      setError('Sesi Anda telah berakhir. Silakan login kembali.');
-      setIsLoading(false);
       router.push('/login');
       return;
     }
 
+    // Validasi
     if (!formData.title || !formData.nama_ketua) {
       setError('Judul karya dan Nama Ketua wajib diisi.');
       setIsLoading(false);
@@ -98,7 +96,6 @@ export default function UploadPage() {
         return;
       }
       data.append('karyaFile', selectedFile);
-
     } else if (uploadType === 'youtube') {
       if (!youtubeLink) {
         setError('Silakan masukkan link YouTube.');
@@ -125,10 +122,20 @@ export default function UploadPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error((result as ErrorResponse).message || 'Terjadi kesalahan saat mengunggah karya.');
+        // 2. HANDLING TOKEN EXPIRED (401)
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('token'); // Hapus token basi
+          alert("Sesi Anda telah berakhir. Silakan login kembali.");
+          router.push('/login'); // Tendang ke login
+          return;
+        }
+        throw new Error((result as ErrorResponse).message || 'Terjadi kesalahan.');
       }
 
-      setSuccess('Karya berhasil diunggah!');
+      // SUKSES: Tampilkan pesan dan redirect
+      setSuccess('Karya berhasil diunggah! Mengalihkan ke hasil Verifikasi...');
+
+      // Reset form (opsional, karena akan pindah halaman)
       setFormData({ title: '', description: '', nama_ketua: '', nim_ketua: '' });
       setSelectedFile(null);
       setYoutubeLink('');
@@ -136,14 +143,15 @@ export default function UploadPage() {
         fileInputRef.current.value = '';
       }
 
+      // Redirect ke Dashboard setelah 2 detik
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 2000);
+
     } catch (err) {
       console.error('Fetch error:', err);
       if (err instanceof Error) {
-        if (err.message.includes('JSON')) {
-          setError('Terjadi masalah dengan server. Pastikan backend Anda berjalan.');
-        } else {
-          setError(err.message);
-        }
+        setError(err.message);
       } else {
         setError('Terjadi kesalahan yang tidak diketahui.');
       }
@@ -162,7 +170,6 @@ export default function UploadPage() {
 
   return (
     <div className="flex min-h-screen flex-col font-sans relative">
-      {/* 1. Background Image Layer */}
       <div className="absolute inset-0 z-0">
         <Image
           src="/future.jpg"
@@ -172,144 +179,60 @@ export default function UploadPage() {
           quality={100}
           priority
         />
-        {/* Overlay hitam transparan agar form lebih menonjol */}
-        {/* <div className="absolute inset-0 bg-black/20"></div> */}
       </div>
 
-      {/* Navbar Global */}
       <div className="relative z-20">
         <Navbar />
       </div>
 
-      {/* Konten Utama */}
       <div className="relative z-10 flex-grow px-4 py-10 flex justify-center items-center">
         <div className="w-full max-w-2xl">
-
-          {/* Judul Halaman (Putih agar kontras dengan background hijau) */}
           <h2 className="mb-6 text-center text-3xl font-bold text-white drop-shadow-md">
             Unggah Karya Baru Anda
           </h2>
 
           <form onSubmit={handleSubmit} className="rounded-lg bg-white p-8 shadow-2xl space-y-6">
 
-            {/* Input: Judul Karya */}
             <div>
-              <label htmlFor="title" className="mb-1.5 block text-sm font-bold text-gray-700">
-                Judul Karya
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleTextChange}
-                required
-                placeholder="Contoh: Aplikasi E-Voting Berbasis Blockchain"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
-                           focus:border-blue-500 focus:ring-2 focus:ring-blue-500
-                           text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
-              />
+              <label htmlFor="title" className="mb-1.5 block text-sm font-bold text-gray-700">Judul Karya</label>
+              <input type="text" id="title" name="title" value={formData.title} onChange={handleTextChange} required placeholder="Contoh: Aplikasi E-Voting" className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400" />
             </div>
 
-            {/* Input: Deskripsi */}
             <div>
-              <label htmlFor="description" className="mb-1.5 block text-sm font-bold text-gray-700">
-                Deskripsi
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleTextChange}
-                rows={4}
-                placeholder="Jelaskan fitur utama, teknologi yang digunakan, dan tujuan dari karya ini..."
-                className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
-                           focus:border-blue-500 focus:ring-2 focus:ring-blue-500
-                           text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
-              />
+              <label htmlFor="description" className="mb-1.5 block text-sm font-bold text-gray-700">Deskripsi</label>
+              <textarea id="description" name="description" value={formData.description} onChange={handleTextChange} rows={4} placeholder="Jelaskan fitur utama..." className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400" />
             </div>
 
-            {/* Grid untuk Nama & NIM Ketua agar sejajar */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label htmlFor="nama_ketua" className="mb-1.5 block text-sm font-bold text-gray-700">
-                  Nama Ketua
-                </label>
-                <input
-                  type="text"
-                  id="nama_ketua"
-                  name="nama_ketua"
-                  value={formData.nama_ketua}
-                  onChange={handleTextChange}
-                  required
-                  placeholder="Contoh: Budi Santoso"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
-                             focus:border-blue-500 focus:ring-2 focus:ring-blue-500
-                             text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
-                />
+                <label htmlFor="nama_ketua" className="mb-1.5 block text-sm font-bold text-gray-700">Nama Ketua</label>
+                <input type="text" id="nama_ketua" name="nama_ketua" value={formData.nama_ketua} onChange={handleTextChange} required placeholder="Contoh: Budi Santoso" className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400" />
               </div>
-
               <div>
-                <label htmlFor="nim_ketua" className="mb-1.5 block text-sm font-bold text-gray-700">
-                  NIM Ketua
-                </label>
-                <input
-                  type="text"
-                  id="nim_ketua"
-                  name="nim_ketua"
-                  value={formData.nim_ketua}
-                  onChange={handleTextChange}
-                  placeholder="Contoh: 33120010"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
-                             focus:border-blue-500 focus:ring-2 focus:ring-blue-500
-                             text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
-                />
+                <label htmlFor="nim_ketua" className="mb-1.5 block text-sm font-bold text-gray-700">NIM Ketua</label>
+                <input type="text" id="nim_ketua" name="nim_ketua" value={formData.nim_ketua} onChange={handleTextChange} placeholder="Contoh: 33120010" className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400" />
               </div>
             </div>
 
             <hr className="border-gray-200" />
 
-            {/* Pilihan Jenis Karya */}
             <fieldset>
               <legend className="mb-3 block text-sm font-bold text-gray-700">Jenis Karya</legend>
               <div className="flex gap-6">
                 <div className="flex items-center">
-                  <input
-                    id="type_file"
-                    name="uploadType"
-                    type="radio"
-                    value="file"
-                    checked={uploadType === 'file'}
-                    onChange={() => setUploadType('file')}
-                    className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <label htmlFor="type_file" className="ml-2 block text-sm font-medium text-gray-900">
-                    Upload File (Gambar/PDF)
-                  </label>
+                  <input id="type_file" name="uploadType" type="radio" value="file" checked={uploadType === 'file'} onChange={() => setUploadType('file')} className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" />
+                  <label htmlFor="type_file" className="ml-2 block text-sm font-medium text-gray-900">Upload File (Gambar/PDF)</label>
                 </div>
                 <div className="flex items-center">
-                  <input
-                    id="type_youtube"
-                    name="uploadType"
-                    type="radio"
-                    value="youtube"
-                    checked={uploadType === 'youtube'}
-                    onChange={() => setUploadType('youtube')}
-                    className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
-                  />
-                  <label htmlFor="type_youtube" className="ml-2 block text-sm font-medium text-gray-900">
-                    Link YouTube
-                  </label>
+                  <input id="type_youtube" name="uploadType" type="radio" value="youtube" checked={uploadType === 'youtube'} onChange={() => setUploadType('youtube')} className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500" />
+                  <label htmlFor="type_youtube" className="ml-2 block text-sm font-medium text-gray-900">Link YouTube</label>
                 </div>
               </div>
             </fieldset>
 
-            {/* Input Kondisional */}
             {uploadType === 'file' ? (
               <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <label htmlFor="karyaFile" className="mb-2 block text-sm font-bold text-gray-700">
-                  Pilih File
-                </label>
+                <label htmlFor="karyaFile" className="mb-2 block text-sm font-bold text-gray-700">Pilih File</label>
                 <input
                   type="file"
                   id="karyaFile"
@@ -317,59 +240,25 @@ export default function UploadPage() {
                   onChange={handleFileChange}
                   accept=".jpg,.jpeg,.png,.pdf"
                   ref={fileInputRef}
-                  className="w-full text-sm text-gray-500
-                             file:mr-4 file:rounded-md file:border-0
-                             file:bg-blue-600 file:py-2.5 file:px-4
-                             file:text-sm file:font-semibold file:text-white
-                             hover:file:bg-blue-700 cursor-pointer"
+                  className="w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-blue-600 file:py-2.5 file:px-4 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-700 cursor-pointer"
                 />
-                <p className="mt-2 text-xs text-gray-500">
-                  Format: JPG, PNG, atau PDF. Maksimal ukuran: 10MB.
-                </p>
+                <p className="mt-2 text-xs text-gray-500">Format: JPG, PNG, atau PDF. Maksimal ukuran: 10MB.</p>
               </div>
             ) : (
               <div>
-                <label htmlFor="youtube_link" className="mb-1.5 block text-sm font-bold text-gray-700">
-                  Link YouTube
-                </label>
-                <input
-                  type="url"
-                  id="youtube_link"
-                  name="youtube_link"
-                  value={youtubeLink}
-                  onChange={(e) => setYoutubeLink(e.target.value)}
-                  placeholder="Contoh: https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm
-                             focus:border-blue-500 focus:ring-2 focus:ring-blue-500
-                             text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
-                />
+                <label htmlFor="youtube_link" className="mb-1.5 block text-sm font-bold text-gray-700">Link YouTube</label>
+                <input type="url" id="youtube_link" name="youtube_link" value={youtubeLink} onChange={(e) => setYoutubeLink(e.target.value)} placeholder="https://www.youtube.com/..." className="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400" />
               </div>
             )}
 
-            {/* Tombol Submit */}
             <div className="pt-4">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full rounded-md border border-transparent bg-blue-600 px-4 py-3 text-base font-bold text-white shadow-md
-                           hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
-                           disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-              >
+              <button type="submit" disabled={isLoading} className="w-full rounded-md border border-transparent bg-blue-600 px-4 py-3 text-base font-bold text-white shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-colors">
                 {isLoading ? 'Sedang Mengunggah...' : 'Submit Karya'}
               </button>
             </div>
 
-            {/* Pesan Status */}
-            {error && (
-              <div className="rounded-md bg-red-50 p-3">
-                <p className="text-center text-sm font-medium text-red-600">{error}</p>
-              </div>
-            )}
-            {success && (
-              <div className="rounded-md bg-green-50 p-3">
-                <p className="text-center text-sm font-medium text-green-600">{success}</p>
-              </div>
-            )}
+            {error && <div className="rounded-md bg-red-50 p-3"><p className="text-center text-sm font-medium text-red-600">{error}</p></div>}
+            {success && <div className="rounded-md bg-green-50 p-3"><p className="text-center text-sm font-medium text-green-600">{success}</p></div>}
 
           </form>
         </div>
