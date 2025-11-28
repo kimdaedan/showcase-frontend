@@ -75,7 +75,7 @@ export default function ProdiDetailPage() {
                     }
                   >
                     {/* Pastikan file ada di public/models/informatika.glb */}
-                    <Scene3D modelUrl="/models/informatika.glb" />
+                    <Scene3D modelUrl="/models/booth_a.glb" />
                   </Suspense>
                 </div>
               </div>

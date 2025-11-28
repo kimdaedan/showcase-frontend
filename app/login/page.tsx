@@ -10,6 +10,7 @@ type FormData = {
   password: string;
 };
 
+// Tipe respon login dari backend
 type LoginSuccessResponse = {
   message: string;
   token: string;
@@ -17,6 +18,7 @@ type LoginSuccessResponse = {
     id: number;
     name: string;
     email: string;
+    role: 'user' | 'admin'; // Menambahkan tipe role
   }
 };
 
@@ -65,18 +67,28 @@ export default function LoginPage() {
 
       const successData = data as LoginSuccessResponse;
 
+      // 1. Simpan Token
       if (successData.token) {
         localStorage.setItem('token', successData.token);
       }
 
-      if (successData.user && successData.user.name) {
+      // 2. Simpan User Info (Nama & Role)
+      if (successData.user) {
         localStorage.setItem('userName', successData.user.name);
+        localStorage.setItem('userRole', successData.user.role);
       }
 
-      setSuccess('Login berhasil! Mengarahkan ke dashboard...');
+      setSuccess('Login berhasil! Mengarahkan...');
 
+      // 3. Redirect Berdasarkan Role
       setTimeout(() => {
-        router.push('/dashboard');
+        if (successData.user.role === 'admin') {
+          // Admin diarahkan ke Dashboard Verifikasi
+          router.push('/dashboard');
+        } else {
+          // User biasa diarahkan ke Manage Karya
+          router.push('/manage');
+        }
       }, 1500);
 
     } catch (err) {
@@ -91,7 +103,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4 font-sans">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-xl border border-gray-100">
 
         <h2 className="mb-2 text-center text-3xl font-bold text-gray-900">
@@ -102,6 +114,7 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+           {/* Input Email */}
            <div>
             <label htmlFor="email" className="mb-1.5 block text-sm font-medium text-gray-700">Email</label>
             <input
@@ -112,13 +125,14 @@ export default function LoginPage() {
               onChange={handleChange}
               required
               placeholder="nama@contoh.com"
-              // [PERUBAHAN 1] Menambahkan font-semibold dan text-gray-900 agar teks tebal
+              // Style font-semibold dan text-gray-900 agar tulisan tebal saat diketik
               className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm
                          focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500
                          text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
             />
           </div>
 
+          {/* Input Password */}
           <div>
             <label htmlFor="password" className="mb-1.5 block text-sm font-medium text-gray-700">Password</label>
             <input
@@ -129,13 +143,13 @@ export default function LoginPage() {
               onChange={handleChange}
               required
               placeholder="••••••••"
-              // [PERUBAHAN 1] Sama di sini, teks tebal saat mengetik
               className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm
                          focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500
                          text-gray-900 font-semibold placeholder:font-normal placeholder:text-gray-400"
             />
           </div>
 
+          {/* Tombol Login */}
           <div className="pt-2">
             <button
               type="submit"
@@ -146,6 +160,7 @@ export default function LoginPage() {
             </button>
           </div>
 
+          {/* Pesan Error/Sukses */}
           {error && (
             <div className="rounded-md bg-red-50 p-3 border border-red-100">
               <p className="text-center text-sm font-medium text-red-600">{error}</p>
@@ -158,6 +173,7 @@ export default function LoginPage() {
           )}
         </form>
 
+        {/* Link Navigasi Bawah */}
         <div className="mt-8 border-t border-gray-200 pt-6 text-center space-y-4">
           <p className="text-sm text-gray-600">
             Belum punya akun?{' '}
@@ -166,7 +182,6 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          {/* [PERUBAHAN 2] Tombol Kembali ke Landing Page */}
           <Link
             href="/"
             className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-800 transition-colors"
