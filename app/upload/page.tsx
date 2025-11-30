@@ -201,7 +201,7 @@ export default function UploadPage() {
               <div className="flex gap-6">
                 <div className="flex items-center">
                   <input id="type_file" name="uploadType" type="radio" value="file" checked={uploadType === 'file'} onChange={() => setUploadType('file')} className="h-4 w-4 text-blue-600 focus:ring-blue-500" />
-                  <label htmlFor="type_file" className="ml-2 block text-sm font-medium text-gray-900">Upload File</label>
+                  <label htmlFor="type_file" className="ml-2 block text-sm font-medium text-gray-900">Upload File karya</label>
                 </div>
                 <div className="flex items-center">
                   <input id="type_youtube" name="uploadType" type="radio" value="youtube" checked={uploadType === 'youtube'} onChange={() => setUploadType('youtube')} className="h-4 w-4 text-blue-600 focus:ring-blue-500" />
