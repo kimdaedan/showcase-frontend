@@ -52,7 +52,7 @@ export default function HomePage() {
           <h1 className="text-5xl md:text-6xl text-gray-900 font-normal leading-tight mb-6 tracking-tight">
             Presentasikan,<br />
             Manage dan <br />
-            <span className="font-bold">Pamerkan Karya Mahasiswa</span>
+            <span className="font-bold">Pamerkan Karya Mahasiswa Informatika</span>
           </h1>
 
           <p className="text-gray-500 text-lg mb-12 font-light tracking-wide">
