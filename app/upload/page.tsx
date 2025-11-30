@@ -154,7 +154,7 @@ export default function UploadPage() {
              {/* Identitas */}
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Nama Ketua</label>
+                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Nama ketua</label>
                   <input type="text" name="nama_ketua" value={formData.nama_ketua} onChange={handleTextChange} required className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nama..."/>
                 </div>
                 <div>
