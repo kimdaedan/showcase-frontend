@@ -135,7 +135,7 @@ export default function UploadPage() {
 
       <div className="relative z-10 flex-grow px-4 py-10 flex justify-center items-center">
         <div className="w-full max-w-2xl">
-          <h2 className="mb-6 text-center text-3xl font-bold text-white drop-shadow-md">Unggah Karya Baru</h2>
+          <h2 className="mb-6 text-center text-3xl font-bold text-white drop-shadow-md">Ungga Karya Baru</h2>
 
           <form onSubmit={handleSubmit} className="rounded-lg bg-white p-8 shadow-2xl space-y-6 relative">
 
