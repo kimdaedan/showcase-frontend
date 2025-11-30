@@ -197,7 +197,7 @@ export default function UploadPage() {
 
              {/* Jenis Karya */}
              <fieldset>
-              <legend className="mb-3 block text-sm font-bold text-gray-700">Jenis Karya</legend>
+              <legend className="mb-3 block text-sm font-bold text-gray-700">Jenis Karya Baru</legend>
               <div className="flex gap-6">
                 <div className="flex items-center">
                   <input id="type_file" name="uploadType" type="radio" value="file" checked={uploadType === 'file'} onChange={() => setUploadType('file')} className="h-4 w-4 text-blue-600 focus:ring-blue-500" />
