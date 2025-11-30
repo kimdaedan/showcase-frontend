@@ -165,7 +165,7 @@ export default function UploadPage() {
 
              {/* [BARU] DROPDOWN PRODI */}
              <div className="relative" ref={dropdownRef}>
-                <label className="mb-1.5 block text-sm font-bold text-gray-700">Program Studi</label>
+                <label className="mb-1.5 block text-sm font-bold text-gray-700">Program Studi Mahasiswa</label>
                 <div
                     onClick={() => setIsProdiOpen(!isProdiOpen)}
                     className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900 bg-white cursor-pointer flex justify-between items-center focus:ring-2 focus:ring-blue-500"
