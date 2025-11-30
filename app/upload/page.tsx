@@ -217,7 +217,7 @@ export default function UploadPage() {
               </div>
              ) : (
               <div>
-                <label className="mb-1.5 block text-sm font-bold text-gray-700">Link YouTube</label>
+                <label className="mb-1.5 block text-sm font-bold text-gray-700">Link YouTube1</label>
                 <input type="url" value={youtubeLink} onChange={(e) => setYoutubeLink(e.target.value)} placeholder="https://..." className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900"/>
               </div>
              )}
