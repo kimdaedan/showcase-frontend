@@ -57,7 +57,7 @@ export default function HomePage() {
 
           <p className="text-gray-500 text-lg mb-12 font-light tracking-wide">
             Tempat di mana Anda bisa mengupload dan <br />
-            memamerkan karya anda.
+            memamerkan karya.
           </p>
 
           <div className="flex justify-center">
