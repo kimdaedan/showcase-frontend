@@ -147,7 +147,7 @@ export default function UploadPage() {
 
              {/* Input Deskripsi */}
              <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700">Deskripsi</label>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">Deskripsi Karya</label>
               <textarea name="description" value={formData.description} onChange={handleTextChange} rows={4} className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Deskripsi..."/>
              </div>
 
