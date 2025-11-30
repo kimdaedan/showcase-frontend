@@ -141,7 +141,7 @@ export default function UploadPage() {
 
              {/* Input Judul */}
              <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700">Judul Karya</label>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">Judul Karya baru</label>
               <input type="text" name="title" value={formData.title} onChange={handleTextChange} required className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Judul..."/>
              </div>
 
