@@ -212,7 +212,7 @@ export default function UploadPage() {
 
              {uploadType === 'file' ? (
               <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <label className="mb-2 block text-sm font-bold text-gray-700">Pilih File</label>
+                <label className="mb-2 block text-sm font-bold text-gray-700">buat File</label>
                 <input type="file" onChange={handleFileChange} accept=".jpg,.jpeg,.png,.pdf" ref={fileInputRef} className="w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-blue-600 file:py-2.5 file:px-4 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-700 cursor-pointer" />
               </div>
              ) : (
