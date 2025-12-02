@@ -135,37 +135,37 @@ export default function UploadPage() {
 
       <div className="relative z-10 flex-grow px-4 py-10 flex justify-center items-center">
         <div className="w-full max-w-2xl">
-          <h2 className="mb-6 text-center text-3xl font-bold text-white drop-shadow-md">Unggah Karya Baru</h2>
+          <h2 className="mb-6 text-center text-3xl font-bold text-white drop-shadow-md">Ungga Karya Baru</h2>
 
           <form onSubmit={handleSubmit} className="rounded-lg bg-white p-8 shadow-2xl space-y-6 relative">
 
              {/* Input Judul */}
              <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700">Judul Karya</label>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">Judul Karya baru</label>
               <input type="text" name="title" value={formData.title} onChange={handleTextChange} required className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Judul..."/>
              </div>
 
              {/* Input Deskripsi */}
              <div>
-              <label className="mb-1.5 block text-sm font-bold text-gray-700">Deskripsi</label>
+              <label className="mb-1.5 block text-sm font-bold text-gray-700">Deskripsi Karya</label>
               <textarea name="description" value={formData.description} onChange={handleTextChange} rows={4} className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Deskripsi..."/>
              </div>
 
              {/* Identitas */}
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Nama Ketua</label>
+                  <label className="mb-1.5 block text-sm font-bold text-gray-700">Nama ketua</label>
                   <input type="text" name="nama_ketua" value={formData.nama_ketua} onChange={handleTextChange} required className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Nama..."/>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-sm font-bold text-gray-700">NIM Ketua</label>
+                  <label className="mb-1.5 block text-sm font-bold text-gray-700">NIM Ketu</label>
                   <input type="text" name="nim_ketua" value={formData.nim_ketua} onChange={handleTextChange} className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="NIM..."/>
                 </div>
              </div>
 
              {/* [BARU] DROPDOWN PRODI */}
              <div className="relative" ref={dropdownRef}>
-                <label className="mb-1.5 block text-sm font-bold text-gray-700">Program Studi</label>
+                <label className="mb-1.5 block text-sm font-bold text-gray-700">Program Studi Mahasiswa</label>
                 <div
                     onClick={() => setIsProdiOpen(!isProdiOpen)}
                     className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900 bg-white cursor-pointer flex justify-between items-center focus:ring-2 focus:ring-blue-500"
@@ -197,11 +197,11 @@ export default function UploadPage() {
 
              {/* Jenis Karya */}
              <fieldset>
-              <legend className="mb-3 block text-sm font-bold text-gray-700">Jenis Karya</legend>
+              <legend className="mb-3 block text-sm font-bold text-gray-700">Jenis Karya Baru</legend>
               <div className="flex gap-6">
                 <div className="flex items-center">
                   <input id="type_file" name="uploadType" type="radio" value="file" checked={uploadType === 'file'} onChange={() => setUploadType('file')} className="h-4 w-4 text-blue-600 focus:ring-blue-500" />
-                  <label htmlFor="type_file" className="ml-2 block text-sm font-medium text-gray-900">Upload File</label>
+                  <label htmlFor="type_file" className="ml-2 block text-sm font-medium text-gray-900">Upload File karya</label>
                 </div>
                 <div className="flex items-center">
                   <input id="type_youtube" name="uploadType" type="radio" value="youtube" checked={uploadType === 'youtube'} onChange={() => setUploadType('youtube')} className="h-4 w-4 text-blue-600 focus:ring-blue-500" />
@@ -212,12 +212,12 @@ export default function UploadPage() {
 
              {uploadType === 'file' ? (
               <div className="bg-gray-50 p-4 rounded-md border border-gray-200">
-                <label className="mb-2 block text-sm font-bold text-gray-700">Pilih File</label>
+                <label className="mb-2 block text-sm font-bold text-gray-700">buat File</label>
                 <input type="file" onChange={handleFileChange} accept=".jpg,.jpeg,.png,.pdf" ref={fileInputRef} className="w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-blue-600 file:py-2.5 file:px-4 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-700 cursor-pointer" />
               </div>
              ) : (
               <div>
-                <label className="mb-1.5 block text-sm font-bold text-gray-700">Link YouTube</label>
+                <label className="mb-1.5 block text-sm font-bold text-gray-700">Link YouTube1</label>
                 <input type="url" value={youtubeLink} onChange={(e) => setYoutubeLink(e.target.value)} placeholder="https://..." className="w-full border-gray-300 border p-2 rounded font-semibold text-gray-900"/>
               </div>
              )}

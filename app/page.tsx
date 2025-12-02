@@ -52,7 +52,7 @@ export default function HomePage() {
           <h1 className="text-5xl md:text-6xl text-gray-900 font-normal leading-tight mb-6 tracking-tight">
             Presentasikan,<br />
             Manage dan <br />
-            <span className="font-bold">Pamerkan Karya Kalian</span>
+            <span className="font-bold">Pamerkan Karya Mahasiswa </span>
           </h1>
 
           <p className="text-gray-500 text-lg mb-12 font-light tracking-wide">
@@ -71,7 +71,7 @@ export default function HomePage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                 </svg>
               </div>
-              <span>VIEW EXAMPLES</span>
+              <span>VIEW CONTOH WEB</span>
             </Link>
           </div>
         </div>
