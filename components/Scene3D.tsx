@@ -68,49 +68,78 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
     scene.add(grid);
 
     // === 3. LOAD MODEL & GANTI TEKSTUR ===
+    // === 3. LOAD MODEL & GANTI TEKSTUR ===
     const loader = new GLTFLoader();
+
+    // PERBAIKAN 1: Tambahkan setCrossOrigin('anonymous')
+    // Ini wajib agar TextureLoader berani mengambil gambar dari Backend
     const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin('anonymous');
 
     loader.load(
       modelUrl,
       (gltf) => {
         const model = gltf.scene;
 
-        // Load Tekstur Proyek (Jika ada)
+        // Load Tekstur Proyek
         let projectTexture: THREE.Texture | null = null;
         if (projectImageUrl) {
-          projectTexture = textureLoader.load(projectImageUrl);
-          projectTexture.flipY = false; // Fix orientasi tekstur GLTF
+          // Load texture
+          projectTexture = textureLoader.load(
+            projectImageUrl,
+            // Callback jika sukses load texture
+            () => console.log("✅ Texture loaded successfully"),
+            undefined,
+            // Callback jika gagal load texture
+            (err) => console.error("❌ Gagal load texture image:", err)
+          );
+
+          projectTexture.flipY = false;
           projectTexture.colorSpace = THREE.SRGBColorSpace;
         }
 
+        // Variabel untuk mengecek apakah kita berhasil menemukan layar atau belum
+        let textureApplied = false;
+
         model.traverse((node) => {
           if ((node as THREE.Mesh).isMesh) {
-            node.castShadow = true;
-            node.receiveShadow = true;
+            const mesh = node as THREE.Mesh;
+
+            // Debugging: Lihat nama mesh di Console Browser (F12)
+            console.log(`🔍 Found Mesh: "${mesh.name}"`);
 
             // --- LOGIKA GANTI GAMBAR LAYAR ---
-            // Cari mesh yang bernama "Screen", "Plane", atau "Image"
-            // Sesuaikan nama ini dengan nama object di file GLB Anda
-            if (projectTexture && (
-                node.name.toLowerCase().includes('VID_Frame') ||
-                node.name.toLowerCase().includes('VID_Slot_1') ||
-                node.name.toLowerCase().includes('image') ||
-                node.name.toLowerCase().includes('layar')
-            )) {
-              console.log("🎯 Menempelkan gambar ke:", node.name);
-              const mesh = node as THREE.Mesh;
-              // Ganti material mesh tersebut dengan gambar proyek
-              mesh.material = new THREE.MeshBasicMaterial({ map: projectTexture });
+            if (projectTexture) {
+              // PERBAIKAN 2: Perluas pencarian nama & tambahkan log
+              // Cek apakah nama mesh mengandung kata-kata kunci di bawah
+              const isTargetMesh = [
+                'vid', 'screen', 'layar', 'image', 'plane', 'display', 'monitor'
+              ].some(keyword => mesh.name.toLowerCase().includes(keyword));
+
+              if (isTargetMesh) {
+                console.log(`🎯 TARGET DITEMUKAN! Menempelkan gambar ke: ${mesh.name}`);
+
+                // PERBAIKAN 3: Gunakan MeshBasicMaterial & DoubleSide
+                // DoubleSide memastikan gambar terlihat meskipun mesh terbalik (backface culling)
+                mesh.material = new THREE.MeshBasicMaterial({
+                  map: projectTexture,
+                  side: THREE.DoubleSide
+                });
+
+                textureApplied = true;
+              }
             }
           }
         });
 
+        if (projectImageUrl && !textureApplied) {
+            console.warn("⚠️ PERINGATAN: Gambar ada, tapi tidak ada Mesh yang namanya cocok dengan filter (vid/screen/layar/dll). Cek console log 'Found Mesh' di atas.");
+        }
+
         scene.add(model);
-        console.log("✅ Model berhasil dimuat");
       },
       undefined,
-      (error) => console.error('❌ Error loading model:', error)
+      (error) => console.error('❌ Error loading GLTF model:', error)
     );
 
     // === 4. EVENT LISTENERS (MOUSE & KEYBOARD) ===

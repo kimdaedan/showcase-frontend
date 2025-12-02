@@ -133,7 +133,7 @@ export default function ProdiDetailPage() {
                       </div>
                     }>
                       <Scene3D
-                        modelUrl="/models/informatika.glb"
+                        modelUrl="/models/booth_a.glb"
                         projectImageUrl={projectImage}
                       />
                     </Suspense>
