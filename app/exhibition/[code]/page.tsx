@@ -27,7 +27,8 @@ export default function ProdiDetailPage() {
 
   const isInformatika = code === 'if';
 
-  const [projectImage, setProjectImage] = useState<string | null>(null);
+  // UBAH STATE: Dari string tunggal menjadi Array string
+  const [projectImages, setProjectImages] = useState<string[]>([]);
   const [displayProject, setDisplayProject] = useState<Project | null>(null);
 
   const prodiNameMap: { [key: string]: string } = {
@@ -52,18 +53,25 @@ export default function ProdiDetailPage() {
         const res = await fetch('http://localhost:5000/api/projects');
         const data = await res.json();
 
-        const approved = data.find((p: Project) =>
+        // 1. UBAH LOGIKA: Pakai .filter() untuk ambil SEMUA yang approved
+        const approvedList = data.filter((p: Project) =>
           p.status === 'APPROVED' &&
           p.karya_type === 'IMAGE' &&
           p.prodi === targetProdi
         );
 
-        if (approved) {
-          const imageUrl = `http://localhost:5000/${approved.karya_url}`;
-          setProjectImage(imageUrl);
-          setDisplayProject(approved);
+        if (approvedList.length > 0) {
+          // 2. AMBIL URL: Ambil maksimal 2 proyek pertama untuk ditampilkan
+          const urls = approvedList.slice(0, 2).map((p: Project) =>
+            `http://localhost:5000/${p.karya_url}`
+          );
+
+          setProjectImages(urls);
+
+          // Info teks yang ditampilkan tetap milik proyek pertama (opsional)
+          setDisplayProject(approvedList[0]);
         } else {
-          setProjectImage(null);
+          setProjectImages([]);
           setDisplayProject(null);
         }
       } catch (err) {
@@ -87,11 +95,10 @@ export default function ProdiDetailPage() {
           quality={100}
           priority
         />
-        {/* Overlay Gelap agar konten terbaca jelas */}
         <div className="absolute inset-0 bg-black/60"></div>
       </div>
 
-      {/* 2. KONTEN UTAMA (Relative & Z-index tinggi) */}
+      {/* 2. KONTEN UTAMA */}
       <div className="relative z-10 flex flex-col min-h-screen">
         <Navbar />
 
@@ -121,8 +128,6 @@ export default function ProdiDetailPage() {
                     <p className="text-gray-600 text-sm">
                       Gunakan <b>WASD</b> untuk berjalan dan <b>Mouse</b> untuk melihat sekeliling.
                     </p>
-
-                    {/* BAGIAN INFO "SEDANG DITAMPILKAN" TELAH DIHAPUS DARI SINI */}
                   </div>
 
                   {/* Area 3D Viewer */}
@@ -132,9 +137,10 @@ export default function ProdiDetailPage() {
                         <div className="animate-pulse font-mono">Loading 3D Environment...</div>
                       </div>
                     }>
+                      {/* UBAH PROPS: Kirim 'images' (Array) bukan 'projectImageUrl' */}
                       <Scene3D
                         modelUrl="/models/booth_a.glb"
-                        projectImageUrl={projectImage}
+                        images={projectImages}
                       />
                     </Suspense>
                   </div>

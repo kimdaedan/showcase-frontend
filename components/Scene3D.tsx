@@ -6,14 +6,14 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 interface Scene3DProps {
   modelUrl: string;
-  projectImageUrl?: string | null; // URL gambar proyek (opsional)
+  images: string[]; // Menerima array URL gambar (Index 0 = TV, Index 1 = Poster)
 }
 
-const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
+const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
 
-  // Refs untuk logika kontrol (agar tidak memicu re-render)
+  // Refs untuk logika kontrol
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const isDragging = useRef(false);
   const previousMousePosition = useRef({ x: 0, y: 0 });
@@ -30,21 +30,19 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xa0a0a0);
-    // Tambahkan kabut agar batas dunia tidak terlihat kasar
     scene.fog = new THREE.Fog(0xa0a0a0, 10, 60);
 
     const camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 1000);
-    // PENTING: Order YXZ agar rotasi kamera stabil (seperti game FPS)
-    camera.rotation.order = 'YXZ';
-    camera.position.set(0, 1.7, 5); // Tinggi mata manusia (1.7m)
+    camera.rotation.order = 'YXZ'; // Penting untuk kontrol ala FPS
+    camera.position.set(0, 1.7, 5); // Tinggi mata rata-rata
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true; // Aktifkan bayangan
+    renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // Bersihkan container sebelum append
+    // Bersihkan container
     while (mountRef.current.firstChild) {
       mountRef.current.removeChild(mountRef.current.firstChild);
     }
@@ -57,86 +55,91 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
     const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
     sunLight.position.set(10, 20, 10);
     sunLight.castShadow = true;
-    // Optimasi resolusi bayangan
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     scene.add(sunLight);
 
-    // Tambahkan lantai grid sebagai acuan visual
+    // Lantai Grid
     const grid = new THREE.GridHelper(100, 100, 0x555555, 0x999999);
     grid.position.y = -0.01;
     scene.add(grid);
 
-    // === 3. LOAD MODEL & GANTI TEKSTUR ===
-    // === 3. LOAD MODEL & GANTI TEKSTUR ===
+    // === 3. LOAD MODEL & MULTIPLE TEXTURES ===
     const loader = new GLTFLoader();
-
-    // PERBAIKAN 1: Tambahkan setCrossOrigin('anonymous')
-    // Ini wajib agar TextureLoader berani mengambil gambar dari Backend
     const textureLoader = new THREE.TextureLoader();
-    textureLoader.setCrossOrigin('anonymous');
+    textureLoader.setCrossOrigin('anonymous'); // Wajib untuk gambar dari backend
 
     loader.load(
       modelUrl,
       (gltf) => {
         const model = gltf.scene;
 
-        // Load Tekstur Proyek
-        let projectTexture: THREE.Texture | null = null;
-        if (projectImageUrl) {
-          // Load texture
-          projectTexture = textureLoader.load(
-            projectImageUrl,
-            // Callback jika sukses load texture
-            () => console.log("✅ Texture loaded successfully"),
-            undefined,
-            // Callback jika gagal load texture
-            (err) => console.error("❌ Gagal load texture image:", err)
+        // --- A. PERSIAPAN TEXTURE TV (Gambar Pertama) ---
+        let textureTV: THREE.Texture | null = null;
+        if (images && images[0]) {
+          textureTV = textureLoader.load(
+            images[0],
+            undefined, undefined,
+            (err) => console.error("❌ Gagal load texture TV:", err)
           );
 
-          projectTexture.flipY = false;
-          projectTexture.colorSpace = THREE.SRGBColorSpace;
+          // Settingan TV (Horizontal)
+          textureTV.flipY = false; // Sesuaikan jika terbalik (true/false)
+          textureTV.colorSpace = THREE.SRGBColorSpace;
+          textureTV.wrapS = THREE.ClampToEdgeWrapping;
+          textureTV.wrapT = THREE.ClampToEdgeWrapping;
+          textureTV.repeat.set(5, 4);
+          textureTV.center.set(0.53, 0.4);
+          textureTV.rotation =1.6; // Tidak diputar
         }
 
-        // Variabel untuk mengecek apakah kita berhasil menemukan layar atau belum
-        let textureApplied = false;
+        // --- B. PERSIAPAN TEXTURE POSTER (Gambar Kedua) ---
+        let texturePoster: THREE.Texture | null = null;
+        if (images && images[1]) {
+          texturePoster = textureLoader.load(
+            images[1],
+            undefined, undefined,
+            (err) => console.error("❌ Gagal load texture Poster:", err)
+          );
 
+          // Settingan Poster (Biasanya Vertikal)
+          // Jika poster terbalik, ubah flipY jadi true
+          texturePoster.flipY = false;
+          texturePoster.colorSpace = THREE.SRGBColorSpace;
+          texturePoster.wrapS = THREE.ClampToEdgeWrapping;
+          texturePoster.wrapT = THREE.ClampToEdgeWrapping;
+          texturePoster.repeat.set(5, 4);
+          texturePoster.center.set(0.5, 0.35);
+          texturePoster.rotation = 0;
+        }
+
+        // --- C. TRAVERSING MODEL ---
         model.traverse((node) => {
           if ((node as THREE.Mesh).isMesh) {
             const mesh = node as THREE.Mesh;
 
-            // Debugging: Lihat nama mesh di Console Browser (F12)
-            console.log(`🔍 Found Mesh: "${mesh.name}"`);
+            // 1. Logika TV (VID_Slot_1)
+            if (textureTV && mesh.name.includes('VID_Slot_1')) {
+              console.log(`📺 TV Detected! Menempelkan gambar 1 ke: ${mesh.name}`);
+              mesh.material = new THREE.MeshBasicMaterial({
+                map: textureTV,
+                side: THREE.DoubleSide
+              });
+            }
 
-            // --- LOGIKA GANTI GAMBAR LAYAR ---
-            if (projectTexture) {
-              // PERBAIKAN 2: Perluas pencarian nama & tambahkan log
-              // Cek apakah nama mesh mengandung kata-kata kunci di bawah
-              const isTargetMesh = [
-                'vid', 'screen', 'layar', 'image', 'plane', 'display', 'monitor'
-              ].some(keyword => mesh.name.toLowerCase().includes(keyword));
-
-              if (isTargetMesh) {
-                console.log(`🎯 TARGET DITEMUKAN! Menempelkan gambar ke: ${mesh.name}`);
-
-                // PERBAIKAN 3: Gunakan MeshBasicMaterial & DoubleSide
-                // DoubleSide memastikan gambar terlihat meskipun mesh terbalik (backface culling)
-                mesh.material = new THREE.MeshBasicMaterial({
-                  map: projectTexture,
-                  side: THREE.DoubleSide
-                });
-
-                textureApplied = true;
-              }
+            // 2. Logika Poster (IMG_Slot_1)
+            if (texturePoster && mesh.name.includes('IMG_Slot_1')) {
+              console.log(`🖼️ Poster Detected! Menempelkan gambar 2 ke: ${mesh.name}`);
+              mesh.material = new THREE.MeshBasicMaterial({
+                map: texturePoster,
+                side: THREE.DoubleSide
+              });
             }
           }
         });
 
-        if (projectImageUrl && !textureApplied) {
-            console.warn("⚠️ PERINGATAN: Gambar ada, tapi tidak ada Mesh yang namanya cocok dengan filter (vid/screen/layar/dll). Cek console log 'Found Mesh' di atas.");
-        }
-
         scene.add(model);
+        console.log("✅ Model berhasil dimuat");
       },
       undefined,
       (error) => console.error('❌ Error loading GLTF model:', error)
@@ -153,9 +156,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
     };
 
     // Mouse Up
-    const onMouseUp = () => {
-      isDragging.current = false;
-    };
+    const onMouseUp = () => { isDragging.current = false; };
 
     // Mouse Move (Rotasi Kamera)
     const onMouseMove = (e: MouseEvent) => {
@@ -164,28 +165,23 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
         const deltaY = e.clientY - previousMousePosition.current.y;
         const sensitivity = 0.003;
 
-        // Putar kiri/kanan (Y-axis)
         camera.rotation.y -= deltaX * sensitivity;
-
-        // Putar atas/bawah (X-axis) dengan batasan
         camera.rotation.x -= deltaY * sensitivity;
-        const maxPolarAngle = Math.PI / 2 - 0.1; // Hampir 90 derajat
+
+        // Batasi sudut pandang atas/bawah
+        const maxPolarAngle = Math.PI / 2 - 0.1;
         camera.rotation.x = Math.max(-maxPolarAngle, Math.min(maxPolarAngle, camera.rotation.x));
 
         previousMousePosition.current = { x: e.clientX, y: e.clientY };
       }
     };
 
-    // Keyboard Down
+    // Keyboard Handlers
     const onKeyDown = (e: KeyboardEvent) => {
       keysPressed.current[e.code] = true;
-      // Update visual tombol di layar
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) {
-        setActiveKey(e.code);
-      }
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) setActiveKey(e.code);
     };
 
-    // Keyboard Up
     const onKeyUp = (e: KeyboardEvent) => {
       keysPressed.current[e.code] = false;
       setActiveKey(null);
@@ -198,25 +194,25 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
 
-    // === 5. GAME LOOP (ANIMASI) ===
+    // === 5. GAME LOOP ===
     const clock = new THREE.Clock();
 
     const animate = () => {
       requestRef.current = requestAnimationFrame(animate);
 
       const delta = clock.getDelta();
-      const moveSpeed = 4.0 * delta; // Kecepatan gerak (meter/detik)
+      const moveSpeed = 4.0 * delta;
 
-      // Hitung arah depan & samping relatif terhadap arah kamera
+      // Hitung arah gerak relatif kamera
       const forward = new THREE.Vector3();
       camera.getWorldDirection(forward);
-      forward.y = 0; // Kunci agar tidak terbang ke atas/bawah
+      forward.y = 0;
       forward.normalize();
 
       const right = new THREE.Vector3();
       right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
-      // Logika Gerak WASD
+      // Logika WASD
       if (keysPressed.current['KeyW'] || keysPressed.current['ArrowUp']) {
         camera.position.add(forward.multiplyScalar(moveSpeed));
       }
@@ -249,7 +245,6 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
     // === 7. CLEANUP ===
     return () => {
       if (requestRef.current) cancelAnimationFrame(requestRef.current);
-
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('mousemove', onMouseMove);
@@ -258,16 +253,17 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
       canvas.removeEventListener('mousedown', onMouseDown);
 
       if (mountRef.current && renderer.domElement) {
-        if (mountRef.current.contains(renderer.domElement)) {
-          mountRef.current.removeChild(renderer.domElement);
-        }
+         // Cek apakah node masih ada sebelum remove
+         if (mountRef.current.contains(renderer.domElement)) {
+           mountRef.current.removeChild(renderer.domElement);
+         }
       }
-      // Bersihkan memori GPU
       renderer.dispose();
     };
-  }, [modelUrl, projectImageUrl]); // Re-run effect jika model atau gambar berubah
 
-  // === HELPERS UNTUK TOMBOL LAYAR ===
+  }, [modelUrl, images]); // Efek dijalankan ulang jika model atau gambar berubah
+
+  // === HELPERS UI ===
   const handleBtnDown = (code: string) => {
     keysPressed.current[code] = true;
     setActiveKey(code);
@@ -290,15 +286,14 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
       ref={mountRef}
       className="w-full h-full relative bg-gray-900 cursor-grab active:cursor-grabbing overflow-hidden"
     >
-      {/* UI Instruksi (Pojok Kiri Atas) */}
+      {/* UI Instruksi */}
       <div className="absolute top-4 left-4 bg-black/60 text-white px-4 py-3 rounded-lg text-xs pointer-events-none select-none z-10 backdrop-blur-sm border border-white/10 shadow-lg">
         <p className="mb-1">🖱️ <b>Klik + Geser</b> : Putar Kamera</p>
         <p>⌨️ <b>WASD</b> : Berjalan</p>
       </div>
 
-      {/* UI Kontrol WASD (Pojok Kiri Bawah) */}
+      {/* UI Kontrol WASD */}
       <div className="absolute bottom-8 left-8 flex flex-col items-center gap-2 z-20">
-        {/* Tombol W */}
         <div
           className={btnClass('KeyW')}
           onMouseDown={() => handleBtnDown('KeyW')}
@@ -308,7 +303,6 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
           onTouchEnd={(e) => { e.preventDefault(); handleBtnUp('KeyW'); }}
         >W</div>
 
-        {/* Tombol ASD */}
         <div className="flex gap-2">
           <div
             className={btnClass('KeyA')}
@@ -336,7 +330,6 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, projectImageUrl }) => {
           >D</div>
         </div>
       </div>
-
     </div>
   );
 };

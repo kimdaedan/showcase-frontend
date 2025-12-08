@@ -22,7 +22,7 @@ export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null); // State untuk menyimpan Role
+  const [userRole, setUserRole] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -34,12 +34,7 @@ export default function DashboardPage() {
       return;
     }
 
-    // Simpan role ke state untuk dipakai di render
     setUserRole(role);
-
-    // [PERUBAHAN] Hapus logika redirect (tendang) user.
-    // Sekarang User BOLEH masuk sini, tapi tombolnya nanti kita sembunyikan.
-
     fetchProjects(token);
   }, [router]);
 
@@ -61,23 +56,24 @@ export default function DashboardPage() {
         });
         if (res.ok) {
             setProjects(prev => prev.map(p => p.id === id ? { ...p, status: newStatus as any } : p));
-            alert(`Status diubah ke ${newStatus}`);
+            // Opsional: Hilangkan alert agar UX lebih cepat
+            // alert(`Status diubah ke ${newStatus}`);
         } else {
-            alert("Gagal update (Mungkin Anda bukan Admin?)");
+            alert("Gagal update status.");
         }
     } catch (e) { console.error(e); }
   };
 
   const handleDelete = async (id: number) => {
       const token = localStorage.getItem('token');
-      if(!confirm('Hapus karya ini?')) return;
+      if(!confirm('Yakin ingin melakukan Takedown karya ini? Data akan dihapus permanen.')) return;
       try {
           const res = await fetch(`http://localhost:5000/api/projects/${id}`, {
               method: 'DELETE',
               headers: { 'Authorization': `Bearer ${token}` }
           });
           if(res.ok) setProjects(prev => prev.filter(p => p.id !== id));
-          else alert("Gagal hapus");
+          else alert("Gagal melakukan takedown");
       } catch(e) { console.error(e); }
   };
 
@@ -94,7 +90,6 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard Verifikasi Karya</h1>
-          {/* Opsional: Info badge untuk user */}
           {userRole !== 'admin' && (
             <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">Mode Lihat (User)</span>
           )}
@@ -123,15 +118,49 @@ export default function DashboardPage() {
                     <td className="px-6 py-4"><StatusBadge status={project.status || 'PENDING'} /></td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium space-x-2">
 
-                      {/* TOMBOL DETAIL (Semua Bisa Lihat) */}
-                      <button onClick={() => setSelectedProject(project)} className="text-blue-600 bg-blue-50 px-3 py-1 rounded hover:bg-blue-100 font-bold">Detail</button>
+                      {/* TOMBOL DETAIL */}
+                      <button onClick={() => setSelectedProject(project)} className="text-blue-600 bg-blue-50 px-3 py-1 rounded hover:bg-blue-100 font-bold border border-blue-200">Detail</button>
 
-                      {/* TOMBOL KHUSUS ADMIN (Setuju, Tolak, Hapus) */}
+                      {/* LOGIKA TOMBOL ADMIN */}
                       {userRole === 'admin' && (
                         <>
-                          <button onClick={() => handleStatusUpdate(project.id, 'APPROVED')} className="text-green-600 bg-green-50 px-3 py-1 rounded hover:bg-green-100 font-bold">Setuju</button>
-                          <button onClick={() => handleStatusUpdate(project.id, 'REJECTED')} className="text-yellow-600 bg-yellow-50 px-3 py-1 rounded hover:bg-yellow-100 font-bold">Tolak</button>
-                          <button onClick={() => handleDelete(project.id)} className="text-red-600 bg-red-50 px-3 py-1 rounded hover:bg-red-100 font-bold">Hapus</button>
+                          {/* TOMBOL SETUJU */}
+                          <button
+                            onClick={() => handleStatusUpdate(project.id, 'APPROVED')}
+                            disabled={project.status === 'REJECTED'} // Disable jika sudah ditolak
+                            className={`px-3 py-1 rounded font-bold border transition-colors ${
+                              project.status === 'APPROVED'
+                                ? 'bg-green-600 text-white border-green-700 cursor-default' // Aktif & Terpilih
+                                : project.status === 'REJECTED'
+                                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' // Mati karena status lain
+                                  : 'text-green-600 bg-green-50 hover:bg-green-100 border-green-200' // Normal (Pending)
+                            }`}
+                          >
+                            {project.status === 'APPROVED' ? 'Disetujui' : 'Setuju'}
+                          </button>
+
+                          {/* TOMBOL TOLAK */}
+                          <button
+                            onClick={() => handleStatusUpdate(project.id, 'REJECTED')}
+                            disabled={project.status === 'APPROVED'} // Disable jika sudah disetujui
+                            className={`px-3 py-1 rounded font-bold border transition-colors ${
+                              project.status === 'REJECTED'
+                                ? 'bg-yellow-500 text-white border-yellow-600 cursor-default' // Aktif & Terpilih
+                                : project.status === 'APPROVED'
+                                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' // Mati karena status lain
+                                  : 'text-yellow-600 bg-yellow-50 hover:bg-yellow-100 border-yellow-200' // Normal (Pending)
+                            }`}
+                          >
+                            {project.status === 'REJECTED' ? 'Ditolak' : 'Tolak'}
+                          </button>
+
+                          {/* TOMBOL TAKEDOWN (HAPUS) */}
+                          <button
+                            onClick={() => handleDelete(project.id)}
+                            className="text-red-600 bg-red-50 px-3 py-1 rounded hover:bg-red-100 font-bold border border-red-200"
+                          >
+                            Takedown
+                          </button>
                         </>
                       )}
 
