@@ -8,105 +8,145 @@ import { useEffect, useState } from 'react';
 export default function Navbar() {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
-  // State untuk menyimpan nama user, defaultnya 'GUEST'
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [userName, setUserName] = useState('GUEST');
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
-    // Cek apakah ada token di localStorage
+    // 1. Cek Token & Data User
     const token = localStorage.getItem('token');
+    const role = localStorage.getItem('userRole');
+    const name = localStorage.getItem('userName');
+
     if (token) {
       setIsLoggedIn(true);
-
-      // Ambil nama user dari localStorage saat komponen dimuat
-      const storedName = localStorage.getItem('userName');
-      if (storedName) {
-        // Ambil kata pertama saja (nama depan) agar muat dan rapi di navbar
-        setUserName(storedName.split(' ')[0]);
-      }
+      setUserRole(role);
+      if (name) setUserName(name.split(' ')[0]); // Ambil nama depan saja
     }
   }, []);
 
   const handleLogout = () => {
-    // Hapus data sesi
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-
-    // Reset state
+    localStorage.clear(); // Hapus semua data sesi
     setIsLoggedIn(false);
+    setUserRole(null);
     setUserName('GUEST');
-
-    // Arahkan ke halaman login
     router.push('/login');
   };
 
-  return (
-    <nav className="w-full bg-white border-b border-gray-200 relative z-50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-3 items-center h-20">
+  // --- LOGIKA MENU BERDASARKAN ROLE ---
+  const getNavLinks = () => {
+    // Menu Dasar (Selalu ada)
+    const baseMenu = [
+      { label: 'EXHIBITION', sub: '3D BOOTH', href: '/exhibition' },
+    ];
 
-          {/* KOLOM KIRI: Logo */}
-          <div className="flex justify-start">
+    // Jika ADMIN
+    if (userRole === 'admin') {
+      return [
+        ...baseMenu,
+        { label: 'VERIFIKASI KARYA', sub: 'ADMIN PANEL', href: '/dashboard' }
+      ];
+    }
+
+    // Jika USER (Mahasiswa)
+    if (userRole === 'user') {
+      return [
+        ...baseMenu,
+        { label: 'UPLOAD KARYA', sub: 'SUBMISSION', href: '/upload' },
+        { label: 'MANAGE KARYA', sub: 'PORTFOLIO', href: '/manage' }
+      ];
+    }
+
+    // Jika GUEST (Belum Login)
+    return baseMenu;
+  };
+
+  const navLinks = getNavLinks();
+
+  return (
+    <nav className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b border-gray-200 transition-all duration-300">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-20">
+
+          {/* 1. LOGO */}
+          <div className="flex-shrink-0 cursor-pointer transition-transform hover:scale-105">
             <Link href="/">
               <Image
                 src="/logo.png"
-                alt="Logo"
-                width={150}
+                alt="Logo Politeknik"
+                width={140}
                 height={50}
-                className="h-12 w-auto object-contain"
+                className="h-10 w-auto object-contain"
+                priority
               />
             </Link>
           </div>
 
-          {/* KOLOM TENGAH: Menu Navigasi */}
-          <div className="flex justify-center items-center space-x-10">
-            <Link href="/exhibition" className="group flex flex-col items-center text-center">
-              <span className="text-sm font-bold text-gray-900 uppercase tracking-wider group-hover:text-blue-600 transition-colors">EXHIBITION</span>
-              <span className="text-[10px] text-gray-500 font-light uppercase tracking-widest">3D BOOTH PRODI</span>
-            </Link>
-
-            {/* Dropdown Upload Karya */}
-            <div className="relative h-full flex items-center" onMouseEnter={() => setIsDropdownOpen(true)} onMouseLeave={() => setIsDropdownOpen(false)}>
-              <button className="group flex flex-col items-center text-center focus:outline-none">
-                <div className="flex items-center">
-                  <span className="text-sm font-bold text-gray-900 uppercase tracking-wider group-hover:text-blue-600 transition-colors">UPLOAD KARYA</span>
-                  <svg className={`ml-1 h-3 w-3 text-gray-400 transform transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </div>
-                <span className="text-[10px] text-gray-500 font-light uppercase tracking-widest">3D Exhibitions</span>
-              </button>
-              {isDropdownOpen && (
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-0 w-48 bg-white border border-gray-100 rounded-md shadow-xl py-2 z-50">
-                   <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-white"></div>
-                  <Link href="/upload" className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors border-b border-gray-50">Upload Karya Baru</Link>
-                  <Link href="/dashboard" className="block px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors">Hasil Verifikasi</Link>
-                </div>
-              )}
-            </div>
-
-            <Link href="/manage" className="group flex flex-col items-center text-center">
-              <span className="text-sm font-bold text-gray-900 uppercase tracking-wider group-hover:text-blue-600 transition-colors">MANAGE KARYA</span>
-              <span className="text-[10px] text-gray-500 font-light uppercase tracking-widest">atur karya</span>
-            </Link>
+          {/* 2. MENU TENGAH (DINAMIS) */}
+          <div className="hidden md:flex space-x-8 lg:space-x-12">
+            {navLinks.map((link) => (
+              <Link key={link.href} href={link.href} className="group flex flex-col items-center text-center relative p-2">
+                <span className="text-sm font-extrabold text-gray-800 uppercase tracking-wider group-hover:text-blue-600 transition-colors">
+                  {link.label}
+                </span>
+                <span className="text-[9px] text-gray-400 font-medium uppercase tracking-[0.2em] group-hover:text-blue-400 transition-colors">
+                  {link.sub}
+                </span>
+                {/* Animated Underline */}
+                <span className="absolute bottom-0 w-0 h-0.5 bg-blue-600 transition-all duration-300 group-hover:w-full"></span>
+              </Link>
+            ))}
           </div>
 
-          {/* KOLOM KANAN: Login & User Info */}
-          <div className="flex justify-end items-center space-x-6">
-            {isLoggedIn ? (
-              <button onClick={handleLogout} className="bg-red-600 text-white px-5 py-2 rounded shadow-md text-xs font-bold hover:bg-red-700 transition-all transform hover:scale-105 uppercase tracking-wide">LOGOUT</button>
+          {/* 3. KANAN: AUTH & PROFILE */}
+          <div className="flex items-center space-x-4">
+            {!isLoggedIn ? (
+              <Link
+                href="/login"
+                className="group relative px-6 py-2.5 bg-gray-900 text-white text-xs font-bold uppercase rounded-full shadow-lg hover:shadow-blue-500/30 overflow-hidden transition-all hover:bg-blue-600"
+              >
+                <span className="relative z-10">Login Masuk</span>
+              </Link>
             ) : (
-              <Link href="/login" className="bg-[#1e2329] text-white px-5 py-2 rounded shadow-md text-xs font-bold hover:bg-gray-800 transition-all transform hover:scale-105 uppercase tracking-wide">LOGIN</Link>
-            )}
+              // User Profile Dropdown
+              <div
+                className="relative"
+                onMouseEnter={() => setIsProfileOpen(true)}
+                onMouseLeave={() => setIsProfileOpen(false)}
+              >
+                <button className="flex items-center gap-3 focus:outline-none group">
+                  <div className="text-right hidden sm:block">
+                    <p className="text-xs font-bold text-gray-900 uppercase">{userName}</p>
+                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">{userRole}</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 p-[2px] shadow-md group-hover:shadow-lg transition-all">
+                    <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
+                       <span className="text-blue-700 font-bold text-sm">{userName.charAt(0)}</span>
+                    </div>
+                  </div>
+                </button>
 
-            <div className="flex items-center space-x-2 cursor-default">
-              {/* Menampilkan Nama User */}
-              <span className="text-xs font-bold text-[#4a3aff] uppercase tracking-wider">
-                {userName}
-              </span>
-              <div className="h-8 w-8 rounded-full bg-[#4a3aff] text-white flex items-center justify-center shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>
+                {/* Dropdown Menu */}
+                {isProfileOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden animate-in fade-in zoom-in duration-200 origin-top-right">
+                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                      <p className="text-xs text-gray-500">Halo,</p>
+                      <p className="text-sm font-bold text-gray-900 truncate">{userName}</p>
+                    </div>
+
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      KELUAR / LOGOUT
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
         </div>

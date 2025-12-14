@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Navbar from '../../../../components/Navbar';
@@ -10,6 +10,9 @@ type FormData = {
   description: string;
   nama_ketua: string;
   nim_ketua: string;
+  // Tambahan untuk preview
+  current_type?: string;
+  current_url?: string;
 };
 
 export default function EditProjectPage() {
@@ -27,7 +30,6 @@ export default function EditProjectPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // Load Data Lama
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/login'); return; }
@@ -48,7 +50,9 @@ export default function EditProjectPage() {
           title: data.title,
           description: data.description,
           nama_ketua: data.nama_ketua,
-          nim_ketua: data.nim_ketua
+          nim_ketua: data.nim_ketua,
+          current_type: data.karya_type,
+          current_url: data.karya_url
         });
 
         if (data.karya_type === 'YOUTUBE') {
@@ -108,143 +112,185 @@ export default function EditProjectPage() {
   };
 
   if (isLoading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <p className="text-xl font-bold text-gray-600">Loading data...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
     </div>
   );
 
   return (
-    <div className="min-h-screen font-sans relative">
-      {/* [UBAH BACKGROUND] Menggunakan future.jpg */}
+    <div className="min-h-screen font-sans relative text-gray-800">
+
+      {/* 1. BACKGROUND FUTURISTIK */}
       <div className="absolute inset-0 z-0">
         <Image
           src="/future.jpg"
-          alt="Background Future"
+          alt="Background"
           fill
-          className="object-cover"
+          className="object-cover blur-[4px] scale-105"
           quality={100}
           priority
         />
-        {/* Overlay gelap agar form lebih menonjol */}
-        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-900/90 via-gray-900/80 to-blue-900/40"></div>
       </div>
 
-      <div className="relative z-20 bg-white shadow-sm">
+      <div className="relative z-20">
         <Navbar />
       </div>
 
-      <div className="relative z-10 flex justify-center py-12 px-4">
-        {/* Container Form dengan backdrop blur */}
-        <div className="w-full max-w-2xl bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl p-8 border border-gray-200/50">
-          <h2 className="text-3xl font-bold text-center mb-8 text-gray-900 drop-shadow-sm">Edit Karya</h2>
+      <div className="relative z-10 flex justify-center py-12 px-4 md:px-8">
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* [UBAH STYLE INPUT] Judul */}
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Judul Karya</label>
-              <input
-                type="text"
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold placeholder:font-normal"
-                required
-              />
-            </div>
+        {/* 2. CARD GLASSMORPHISM LEBAR */}
+        <div className="w-full max-w-5xl bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-white/20">
 
-            {/* [UBAH STYLE INPUT] Deskripsi */}
-            <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Deskripsi</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                rows={5}
-                className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold placeholder:font-normal resize-none"
-              />
-            </div>
+          {/* KOLOM KIRI: PREVIEW MEDIA */}
+          <div className="md:w-1/3 bg-gray-100/50 p-8 border-r border-gray-200 flex flex-col items-center justify-center text-center">
+             <h3 className="text-lg font-bold text-gray-700 mb-4">Media Saat Ini</h3>
 
-            {/* [UBAH STYLE INPUT] Identitas */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">Nama Ketua</label>
+             <div className="relative w-full aspect-square rounded-xl overflow-hidden shadow-lg border border-white mb-4 bg-gray-200 group">
+                {formData.current_type === 'IMAGE' ? (
+                   <Image
+                     src={`http://localhost:5000/${formData.current_url}`}
+                     alt="Preview"
+                     fill
+                     className="object-cover group-hover:scale-110 transition-transform duration-500"
+                     unoptimized
+                   />
+                ) : formData.current_type === 'YOUTUBE' ? (
+                   <div className="flex items-center justify-center h-full bg-black">
+                      <iframe
+                        src={formData.current_url?.replace('watch?v=', 'embed/').split('&')[0]}
+                        className="w-full h-full pointer-events-none" // Disable interaction in preview
+                        title="YT Preview"
+                      ></iframe>
+                   </div>
+                ) : (
+                   <div className="flex items-center justify-center h-full text-gray-400">PDF File</div>
+                )}
+             </div>
+
+             <p className="text-xs text-gray-500">
+               Media ini akan diganti jika Anda mengupload file baru atau mengubah link YouTube.
+             </p>
+          </div>
+
+          {/* KOLOM KANAN: FORM EDIT */}
+          <div className="md:w-2/3 p-8 md:p-10">
+            <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Edit Karya</h2>
+            <p className="text-gray-500 text-sm mb-8">Perbarui informasi karya Anda agar lebih menarik.</p>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+
+              {/* Judul */}
+              <div className="group">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 group-focus-within:text-blue-600 transition-colors">Judul Karya</label>
                 <input
                   type="text"
-                  value={formData.nama_ketua}
-                  onChange={(e) => setFormData({...formData, nama_ketua: e.target.value})}
-                  className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold"
+                  value={formData.title}
+                  onChange={(e) => setFormData({...formData, title: e.target.value})}
+                  className="w-full bg-gray-50 border-b-2 border-gray-200 px-3 py-3 text-gray-900 font-semibold focus:outline-none focus:border-blue-600 focus:bg-white transition-all rounded-t-md"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">NIM Ketua</label>
-                <input
-                  type="text"
-                  value={formData.nim_ketua}
-                  onChange={(e) => setFormData({...formData, nim_ketua: e.target.value})}
-                  className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold"
+
+              {/* Deskripsi */}
+              <div className="group">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 group-focus-within:text-blue-600 transition-colors">Deskripsi</label>
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  rows={4}
+                  className="w-full bg-gray-50 border-b-2 border-gray-200 px-3 py-3 text-gray-900 text-sm focus:outline-none focus:border-blue-600 focus:bg-white transition-all rounded-t-md resize-none"
                 />
               </div>
-            </div>
 
-            <hr className="border-gray-200" />
-
-            {/* File / Youtube */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <p className="text-sm font-bold text-gray-900 mb-3">Update File/Link (Opsional)</p>
-
-              <div className="flex gap-6 mb-4">
-                <label className="flex items-center space-x-2 cursor-pointer group">
-                  <input type="radio" name="type" checked={uploadType === 'file'} onChange={() => setUploadType('file')} className="text-blue-600 focus:ring-blue-500" />
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">File (Gambar/PDF)</span>
-                </label>
-                <label className="flex items-center space-x-2 cursor-pointer group">
-                  <input type="radio" name="type" checked={uploadType === 'youtube'} onChange={() => setUploadType('youtube')} className="text-blue-600 focus:ring-blue-500" />
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">YouTube</span>
-                </label>
+              {/* Identitas (Grid) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="group">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 group-focus-within:text-blue-600 transition-colors">Nama Ketua</label>
+                  <input
+                    type="text"
+                    value={formData.nama_ketua}
+                    onChange={(e) => setFormData({...formData, nama_ketua: e.target.value})}
+                    className="w-full bg-gray-50 border-b-2 border-gray-200 px-3 py-3 text-gray-900 focus:outline-none focus:border-blue-600 focus:bg-white transition-all rounded-t-md"
+                    required
+                  />
+                </div>
+                <div className="group">
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1 group-focus-within:text-blue-600 transition-colors">NIM Ketua</label>
+                  <input
+                    type="text"
+                    value={formData.nim_ketua}
+                    onChange={(e) => setFormData({...formData, nim_ketua: e.target.value})}
+                    className="w-full bg-gray-50 border-b-2 border-gray-200 px-3 py-3 text-gray-900 focus:outline-none focus:border-blue-600 focus:bg-white transition-all rounded-t-md"
+                  />
+                </div>
               </div>
 
-              {uploadType === 'file' ? (
-                <input
-                  type="file"
-                  accept=".jpg,.jpeg,.png,.pdf"
-                  onChange={(e) => e.target.files && setSelectedFile(e.target.files[0])}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer bg-white border border-gray-300 rounded-md"
-                />
-              ) : (
-                <input
-                  type="url"
-                  value={youtubeLink}
-                  onChange={(e) => setYoutubeLink(e.target.value)}
-                  placeholder="https://youtube.com/..."
-                  className="w-full rounded-md border border-gray-300 px-4 py-3 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 font-semibold placeholder:font-normal"
-                />
+              {/* Upload Section */}
+              <div className="mt-8 pt-6 border-t border-gray-100">
+                <p className="text-sm font-bold text-gray-900 mb-4">Ganti Media (Opsional)</p>
+
+                <div className="flex gap-4 mb-4">
+                  <label className={`flex-1 flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-all ${uploadType === 'file' ? 'bg-blue-50 border-blue-500 text-blue-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input type="radio" name="type" checked={uploadType === 'file'} onChange={() => setUploadType('file')} className="hidden" />
+                    <span className="text-sm font-bold">📁 File Upload</span>
+                  </label>
+                  <label className={`flex-1 flex items-center justify-center p-3 rounded-lg border cursor-pointer transition-all ${uploadType === 'youtube' ? 'bg-red-50 border-red-500 text-red-700' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    <input type="radio" name="type" checked={uploadType === 'youtube'} onChange={() => setUploadType('youtube')} className="hidden" />
+                    <span className="text-sm font-bold">▶️ YouTube Link</span>
+                  </label>
+                </div>
+
+                {uploadType === 'file' ? (
+                  <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-6 hover:bg-gray-50 transition-colors text-center cursor-pointer">
+                     <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf"
+                        onChange={(e) => e.target.files && setSelectedFile(e.target.files[0])}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                     />
+                     <p className="text-sm text-gray-500">
+                        {selectedFile ? <span className="text-blue-600 font-bold">{selectedFile.name}</span> : "Klik atau seret file baru ke sini"}
+                     </p>
+                  </div>
+                ) : (
+                  <input
+                    type="url"
+                    value={youtubeLink}
+                    onChange={(e) => setYoutubeLink(e.target.value)}
+                    placeholder="https://youtube.com/watch?v=..."
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 shadow-sm focus:border-red-500 focus:ring-1 focus:ring-red-500 text-gray-900 text-sm"
+                  />
+                )}
+              </div>
+
+              {error && (
+                <div className="bg-red-50 p-3 rounded-lg border border-red-200 animate-pulse">
+                  <p className="text-red-600 text-center text-sm font-bold">{error}</p>
+                </div>
               )}
-               <p className="mt-2 text-xs text-gray-500">Biarkan kosong jika tidak ingin mengubah file/link yang sudah ada.</p>
-            </div>
 
-            {error && (
-              <div className="bg-red-50 p-3 rounded-md border border-red-200">
-                <p className="text-red-600 text-center text-sm font-bold">{error}</p>
+              {/* Action Buttons */}
+              <div className="flex gap-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="w-1/3 bg-white text-gray-700 py-3 rounded-xl font-bold border border-gray-300 hover:bg-gray-100 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="w-2/3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 rounded-xl font-bold hover:shadow-lg hover:scale-[1.02] transition-all transform disabled:opacity-50 disabled:scale-100"
+                >
+                  {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
               </div>
-            )}
 
-            <div className="flex gap-4 pt-6">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="flex-1 bg-white text-gray-700 py-3 px-4 rounded-md font-bold border border-gray-300 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-md font-bold hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-              >
-                {isSaving ? 'Menyimpan Perubahan...' : 'Simpan Perubahan'}
-              </button>
-            </div>
+            </form>
+          </div>
 
-          </form>
         </div>
       </div>
     </div>
