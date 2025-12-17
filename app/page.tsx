@@ -4,15 +4,12 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '../components/Navbar';
-import SplashScreen from '../components/SplashScreen';
 
 export default function HomePage() {
-  const [showSplash, setShowSplash] = useState(true);
-
   // --- STATE UNTUK VIDEO YOUTUBE ---
   const [isVideoOpen, setIsVideoOpen] = useState(false);
-  // GANTI ID VIDEO YOUTUBE DI SINI (Contoh: Profile Polibatam)
-  const YOUTUBE_VIDEO_ID = "K5KAc5CoCuk?si=vHfhpZl5k7iuaF_o";
+  // ID Video Youtube
+  const YOUTUBE_VIDEO_ID = "MqazV4hbu8E?si=rJ6yE8e-khotI7Z2";
 
   // --- STATE TYPING EFFECT ---
   const [displayText, setDisplayText] = useState("");
@@ -21,17 +18,8 @@ export default function HomePage() {
   const [typingSpeed, setTypingSpeed] = useState(150);
   const phrases = ["Pameran Mahasiswa", "Inovasi Teknologi", "Kreativitas Seni", "Solusi Masa Depan"];
 
-  useEffect(() => {
-    const hasSeenIntro = sessionStorage.getItem('hasSeenIntro');
-    if (hasSeenIntro) {
-      setShowSplash(false);
-    }
-  }, []);
-
   // Logika Typing Effect
   useEffect(() => {
-    if (showSplash) return;
-
     const handleTyping = () => {
       const i = loopNum % phrases.length;
       const fullText = phrases[i];
@@ -53,16 +41,7 @@ export default function HomePage() {
 
     const timer = setTimeout(handleTyping, typingSpeed);
     return () => clearTimeout(timer);
-  }, [displayText, isDeleting, loopNum, phrases, showSplash, typingSpeed]);
-
-  const handleSplashFinish = () => {
-    setShowSplash(false);
-    sessionStorage.setItem('hasSeenIntro', 'true');
-  };
-
-  if (showSplash) {
-    return <SplashScreen onFinish={handleSplashFinish} />;
-  }
+  }, [displayText, isDeleting, loopNum, phrases, typingSpeed]);
 
   return (
     <main className="flex min-h-screen flex-col font-sans relative overflow-hidden text-gray-800">

@@ -8,7 +8,7 @@ interface SplashScreenProps {
 
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
   // ID dari URL YouTube Shorts: https://youtu.be/RPbGLZ_M0GY
-  const VIDEO_ID = "RPbGLZ_M0GY";
+  const VIDEO_ID = "rRPbGLZ_M0GY";
 
   // Durasi animasi sebelum otomatis masuk ke home (dalam milidetik)
   // Video tersebut durasinya sekitar 8 detik, jadi kita set 8000ms
