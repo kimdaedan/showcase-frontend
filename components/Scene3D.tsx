@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 interface Scene3DProps {
   modelUrl: string;
   images: string[];
-  // Callback menerima index (0 = TV, 1 = Poster)
+  // Callback menerima index (0 = TV/Mesh25, 1 = Poster)
   onHoverScreen?: (isHovering: boolean, x: number, y: number, index: number) => void;
   onClickScreen?: (index: number) => void;
 }
@@ -74,16 +74,19 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
     loader.load(modelUrl, (gltf) => {
         const model = gltf.scene;
 
-        // Texture TV (Index 0)
+        // --- TEXTURE SETUP ---
+
+        // 1. Texture Khusus Model Lama (VID_Slot_1) - Index 0
         let textureTV: THREE.Texture | null = null;
         if (images && images[0]) {
           textureTV = textureLoader.load(images[0]);
           textureTV.flipY = false; textureTV.colorSpace = THREE.SRGBColorSpace;
+          // Rotasi khusus untuk model lama
           textureTV.rotation = 1.6; textureTV.center.set(0.53, 0.4); textureTV.repeat.set(5, 4);
           textureTV.wrapS = THREE.ClampToEdgeWrapping; textureTV.wrapT = THREE.ClampToEdgeWrapping;
         }
 
-        // Texture Poster (Index 1)
+        // 2. Texture Khusus Model Lama (IMG_Slot_1) - Index 1
         let texturePoster: THREE.Texture | null = null;
         if (images && images[1]) {
           texturePoster = textureLoader.load(images[1]);
@@ -92,18 +95,41 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
           texturePoster.wrapS = THREE.ClampToEdgeWrapping; texturePoster.wrapT = THREE.ClampToEdgeWrapping;
         }
 
+        // 3. [BARU] Texture Khusus Mesh "25" (Mapping Normal) - Index 0
+        // Kita buat texture instance baru agar settingan rotasi textureTV tidak merusak mesh 25
+        let textureMesh17: THREE.Texture | null = null;
+        if (images && images[0]) {
+           textureMesh17 = textureLoader.load(images[0]);
+           textureMesh17.flipY = false; // Standar GLTF
+           textureMesh17.colorSpace = THREE.SRGBColorSpace;
+           // Tidak perlu rotasi aneh-aneh untuk mesh standar
+        }
+
+        // --- TRAVERSE & APPLY ---
         model.traverse((node) => {
           if ((node as THREE.Mesh).isMesh) {
             const mesh = node as THREE.Mesh;
-            // TV -> Index 0
+
+            // A. Logika Model Lama (TV)
             if (mesh.name.includes('VID_Slot_1')) {
               if (textureTV) mesh.material = new THREE.MeshBasicMaterial({ map: textureTV, side: THREE.DoubleSide });
               interactableMeshes.current.push(mesh);
             }
-            // Poster -> Index 1
+
+            // B. Logika Model Lama (Poster)
             if (mesh.name.includes('IMG_Slot_1')) {
               if (texturePoster) mesh.material = new THREE.MeshBasicMaterial({ map: texturePoster, side: THREE.DoubleSide });
               interactableMeshes.current.push(mesh);
+            }
+
+            // C. [BARU] Logika Mesh "25"
+            // Kita gunakan exact match (===) atau includes tergantung kebutuhan
+            if (mesh.name === '17' || mesh.name.includes('17')) {
+               if (textureMesh17) {
+                  // Gunakan MeshBasicMaterial agar gambar terang (seperti layar)
+                  mesh.material = new THREE.MeshBasicMaterial({ map: textureMesh17, side: THREE.DoubleSide });
+               }
+               interactableMeshes.current.push(mesh);
             }
           }
         });
@@ -125,8 +151,13 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
 
         if (intersects.length > 0) {
             const objectName = intersects[0].object.name;
+
+            // Interaksi Model Lama
             if (objectName.includes('VID_Slot_1')) return { hit: true, index: 0 };
             if (objectName.includes('IMG_Slot_1')) return { hit: true, index: 1 };
+
+            // [BARU] Interaksi Mesh "25" -> Return index 0 (karena menampilkan image[0])
+            if (objectName === '17' || objectName.includes('17')) return { hit: true, index: 0 };
         }
         return { hit: false, index: -1 };
     };
@@ -224,7 +255,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
     <div ref={mountRef} className="w-full h-full relative bg-gray-900 cursor-grab active:cursor-grabbing overflow-hidden">
       <div className="absolute top-4 left-4 bg-black/60 text-white px-4 py-3 rounded-lg text-xs pointer-events-none select-none z-10 backdrop-blur-sm border border-white/10 shadow-lg">
         <p className="mb-1">🖱️ <b>Klik + Geser</b> : Putar Kamera</p>
-        <p className="mb-1">🖱️ <b>Klik Layar TV/Poster</b> : Lihat Detail</p>
+        <p className="mb-1">🖱️ <b>Klik Layar</b> : Lihat Detail</p>
         <p>⌨️ <b>WASD</b> : Berjalan</p>
       </div>
 
