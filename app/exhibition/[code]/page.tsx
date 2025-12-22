@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation'; // Tambahkan useRouter
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '../../../components/Navbar';
@@ -32,14 +32,13 @@ type Comment = {
 const PRODI_CONFIG: { [key: string]: { name: string; model: string; theme: string; has3D: boolean } } = {
   if: { name: "D3 Teknik Informatika", model: "/models/booth_a.glb", theme: "from-blue-900/90", has3D: true },
   trm: { name: "D4 Teknologi Rekayasa Multimedia", model: "/models/booth_a.glb", theme: "from-purple-900/90", has3D: true },
-  cyber: { name: "D4 Keamanan Siber", model: "/models/siber.glb", theme: "from-green-900/90", has3D: true },
-  animasi: { name: "D4 Animasi", model: "/models/Animasi.glb", theme: "from-green-900/90", has3D: true },
+  cyber: { name: "D4 Keamanan Siber", model: "/models/qonita.glb", theme: "from-green-900/90", has3D: true },
   default: { name: "Program Studi", model: "", theme: "from-gray-900/90", has3D: false }
 };
 
 export default function ProdiDetailPage() {
   const params = useParams();
-  const router = useRouter(); // Inisialisasi Router
+  const router = useRouter();
   const rawCode = typeof params.code === 'string' ? params.code.toLowerCase() : '';
   const config = PRODI_CONFIG[rawCode] || { ...PRODI_CONFIG.default, name: `Prodi ${rawCode.toUpperCase()}` };
 
@@ -47,6 +46,7 @@ export default function ProdiDetailPage() {
   const [projectsList, setProjectsList] = useState<Project[]>([]);
   const [projectImages, setProjectImages] = useState<string[]>([]);
   const [displayProject, setDisplayProject] = useState<Project | null>(null);
+
   const [hoverInfo, setHoverInfo] = useState<{ show: boolean; x: number; y: number }>({ show: false, x: 0, y: 0 });
   const [showPreviewPopup, setShowPreviewPopup] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -55,7 +55,6 @@ export default function ProdiDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
-  // State Login
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // --- 1. CEK LOGIN ---
@@ -78,12 +77,23 @@ export default function ProdiDetailPage() {
         const res = await fetch('http://localhost:5000/api/projects');
         const data = await res.json();
         const approvedList = data.filter((p: Project) =>
-          p.status === 'APPROVED' && p.karya_type === 'IMAGE' && p.prodi === config.name
+          p.status === 'APPROVED' &&
+          (p.karya_type === 'IMAGE' || p.karya_type === 'YOUTUBE') && // Izinkan YouTube
+          p.prodi === config.name
         );
 
         if (approvedList.length > 0) {
           setProjectsList(approvedList);
-          const urls = approvedList.slice(0, 2).map((p: Project) => `http://localhost:5000/${p.karya_url}`);
+          // Helper untuk thumbnail youtube sederhana
+          const getThumb = (url: string) => {
+             const vidId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
+             return `https://img.youtube.com/vi/${vidId}/hqdefault.jpg`;
+          };
+
+          const urls = approvedList.slice(0, 2).map((p: Project) =>
+             p.karya_type === 'YOUTUBE' ? getThumb(p.karya_url) : `http://localhost:5000/${p.karya_url}`
+          );
+
           setProjectImages(urls);
           setDisplayProject(approvedList[0]);
         } else {
@@ -105,13 +115,11 @@ export default function ProdiDetailPage() {
 
   // --- 4. SUBMIT KOMENTAR ---
   const handleSubmitComment = async () => {
-    // Validasi Login
     if (!isLoggedIn) {
         alert("Silakan login terlebih dahulu untuk memberikan ulasan.");
-        router.push('/login'); // Redirect ke login
+        router.push('/login');
         return;
     }
-
     if (!displayProject) return;
     if (!newComment.text || newComment.rating === 0) {
         alert("Mohon isi komentar dan rating!");
@@ -241,9 +249,34 @@ export default function ProdiDetailPage() {
                       </div>
                       <button onClick={() => setShowDetailModal(false)} className="md:hidden text-gray-400 text-3xl">&times;</button>
                     </div>
-                    <div className="aspect-video relative rounded-xl overflow-hidden shadow-lg mb-8 bg-black">
-                      <Image src={`http://localhost:5000/${displayProject.karya_url}`} alt="Karya" fill className="object-contain" unoptimized />
+
+                    {/* MEDIA PREVIEW */}
+                    <div className="aspect-video relative rounded-xl overflow-hidden shadow-lg mb-4 bg-black">
+                      {displayProject.karya_type === 'YOUTUBE' ? (
+                         <iframe
+                           width="100%" height="100%"
+                           src={displayProject.karya_url.replace('watch?v=', 'embed/').split('&')[0]}
+                           title="YouTube" frameBorder="0" allowFullScreen
+                           className="absolute inset-0"
+                         />
+                      ) : (
+                         <Image src={`http://localhost:5000/${displayProject.karya_url}`} alt="Karya" fill className="object-contain" unoptimized />
+                      )}
                     </div>
+
+                    {/* [BARU] TOMBOL BUKA YOUTUBE */}
+                    {displayProject.karya_type === 'YOUTUBE' && (
+                        <a
+                          href={displayProject.karya_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mb-6 flex items-center justify-center gap-2 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                        >
+                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+                           Tonton di YouTube
+                        </a>
+                    )}
+
                     <div className="prose max-w-none">
                        <h4 className="font-bold text-gray-900 text-lg mb-2">Tentang Karya</h4>
                        <p className="text-gray-800 leading-relaxed text-justify whitespace-pre-line font-medium">{displayProject.description}</p>
@@ -271,7 +304,7 @@ export default function ProdiDetailPage() {
                       }
                     </div>
 
-                    {/* AREA INPUT KOMENTAR (CONDITIONAL LOGIN) */}
+                    {/* AREA INPUT KOMENTAR */}
                     <div className="p-6 bg-white border-t border-gray-200 shadow-lg z-20">
                       <h5 className="text-sm font-bold text-gray-800 mb-3">Tulis Ulasan</h5>
 
