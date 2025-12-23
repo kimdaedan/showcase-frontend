@@ -13,7 +13,7 @@ const prodiData = [
   { id: 4, name: "D4 Animasi", code: "ANIMASI", image: "/exhibitions/animasi.jpg", color: "bg-pink-500" },
   { id: 5, name: "D4 Rekayasa Perangkat Lunak", code: "RPL", image: "/exhibitions/rpl.jpg", color: "bg-indigo-600" },
   { id: 6, name: "D3 Teknik Elektronika", code: "ELKA", image: "/exhibitions/game.jpg", color: "bg-yellow-500" },
-  { id: 7, name: "D4 Mekatronika", code: "MK", image: "/exhibitions/geomatika.jpg", color: "bg-red-600" },
+  { id: 7, name: "D4 Teknologi Geomatika", code: "geomatika", image: "/exhibitions/geomatika.jpg", color: "bg-red-600" },
   { id: 8, name: "D3 Akuntansi", code: "AK", image: "/exhibitions/robotika.jpg", color: "bg-green-600" },
 ];
 

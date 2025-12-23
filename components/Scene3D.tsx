@@ -7,7 +7,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 interface Scene3DProps {
   modelUrl: string;
   images: string[];
-  // Callback menerima index (0 = TV/Mesh25, 1 = Poster)
+  // Callback interaksi
   onHoverScreen?: (isHovering: boolean, x: number, y: number, index: number) => void;
   onClickScreen?: (index: number) => void;
 }
@@ -16,7 +16,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
   const mountRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
 
-  // Refs Logika & Interaksi
+  // State & Refs
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const isDragging = useRef(false);
   const previousMousePosition = useRef({ x: 0, y: 0 });
@@ -25,7 +25,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
   const interactableMeshes = useRef<THREE.Mesh[]>([]);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
 
-  // Mencegah Re-render Loop
+  // Refs untuk callback agar tidak re-render
   const onHoverRef = useRef(onHoverScreen);
   const onClickRef = useRef(onClickScreen);
 
@@ -39,7 +39,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
   useEffect(() => {
     if (!mountRef.current) return;
 
-    // --- 1. SETUP SCENE ---
+    // 1. SETUP SCENE
     const width = mountRef.current.clientWidth;
     const height = mountRef.current.clientHeight;
     const scene = new THREE.Scene();
@@ -51,113 +51,138 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
     camera.position.set(0, 1.7, 5);
     cameraRef.current = camera;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.outputColorSpace = THREE.SRGBColorSpace; // PENTING: Warna akurat
 
-    mountRef.current.innerHTML = ''; // Clear container
+    mountRef.current.innerHTML = '';
     mountRef.current.appendChild(renderer.domElement);
 
-    // --- 2. LIGHTING ---
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); scene.add(ambientLight);
-    const sunLight = new THREE.DirectionalLight(0xffffff, 1.5); sunLight.position.set(10, 20, 10); sunLight.castShadow = true; scene.add(sunLight);
-    const grid = new THREE.GridHelper(100, 100, 0x555555, 0x999999); grid.position.y = -0.01; scene.add(grid);
+    // 2. LIGHTING
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    sunLight.position.set(10, 20, 10);
+    sunLight.castShadow = true;
+    scene.add(sunLight);
+    const grid = new THREE.GridHelper(100, 100, 0x555555, 0x999999);
+    grid.position.y = -0.01;
+    scene.add(grid);
 
-    // --- 3. LOAD MODEL & TEXTURE ---
+    // 3. LOAD MODEL & TEXTURE
     const loader = new GLTFLoader();
     const textureLoader = new THREE.TextureLoader();
     textureLoader.setCrossOrigin('anonymous');
     interactableMeshes.current = [];
 
+    // Material untuk layar kosong (HITAM)
+    const emptyMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+
+    // Helper: Setup Texture Standar
+    const setupTexture = (url: string) => {
+        const tex = textureLoader.load(url);
+        tex.flipY = false; // Standar GLTF
+        tex.colorSpace = THREE.SRGBColorSpace;
+        return tex;
+    };
+
+    // Helper: Ambil material unik (TANPA PENGULANGAN)
+    const getUniqueMaterial = (index: number) => {
+        // Jika tidak ada gambar di index ini, return hitam
+        if (!images || !images[index]) return emptyMaterial;
+
+        const tex = setupTexture(images[index]);
+        return new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+    };
+
     loader.load(modelUrl, (gltf) => {
         const model = gltf.scene;
+        console.log("✅ Model Loaded. Mapping slots uniquely...");
 
-        // --- TEXTURE SETUP ---
+        // Mapping 1-on-1 (Index 0 ke Slot 8, Index 1 ke Slot 9, dst)
+        const matSlot8 = getUniqueMaterial(0);
+        const matSlot9 = getUniqueMaterial(1);
+        const matSlot5 = getUniqueMaterial(2);
+        const matSlot6 = getUniqueMaterial(3);
+        const matSlot7 = getUniqueMaterial(4);
 
-        // 1. Texture Khusus Model Lama (VID_Slot_1) - Index 0
-        let textureTV: THREE.Texture | null = null;
-        if (images && images[0]) {
-          textureTV = textureLoader.load(images[0]);
-          textureTV.flipY = false; textureTV.colorSpace = THREE.SRGBColorSpace;
-          // Rotasi khusus untuk model lama
-          textureTV.rotation = 1.6; textureTV.center.set(0.53, 0.4); textureTV.repeat.set(5, 4);
-          textureTV.wrapS = THREE.ClampToEdgeWrapping; textureTV.wrapT = THREE.ClampToEdgeWrapping;
-        }
-
-        // 2. Texture Khusus Model Lama (IMG_Slot_1) - Index 1
-        let texturePoster: THREE.Texture | null = null;
-        if (images && images[1]) {
-          texturePoster = textureLoader.load(images[1]);
-          texturePoster.flipY = false; texturePoster.colorSpace = THREE.SRGBColorSpace;
-          texturePoster.rotation = 0; texturePoster.center.set(0.5, 0.35); texturePoster.repeat.set(5, 4);
-          texturePoster.wrapS = THREE.ClampToEdgeWrapping; texturePoster.wrapT = THREE.ClampToEdgeWrapping;
-        }
-
-        // 3. [BARU] Texture Khusus Mesh "25" (Mapping Normal) - Index 0
-        // Kita buat texture instance baru agar settingan rotasi textureTV tidak merusak mesh 25
-        let textureMesh17: THREE.Texture | null = null;
-        if (images && images[0]) {
-           textureMesh17 = textureLoader.load(images[0]);
-           textureMesh17.flipY = false; // Standar GLTF
-           textureMesh17.colorSpace = THREE.SRGBColorSpace;
-           // Tidak perlu rotasi aneh-aneh untuk mesh standar
-        }
-
-        // --- TRAVERSE & APPLY ---
+        // Traverse Model
         model.traverse((node) => {
           if ((node as THREE.Mesh).isMesh) {
             const mesh = node as THREE.Mesh;
+            const name = mesh.name;
 
-            // A. Logika Model Lama (TV)
-            if (mesh.name.includes('VID_Slot_1')) {
-              if (textureTV) mesh.material = new THREE.MeshBasicMaterial({ map: textureTV, side: THREE.DoubleSide });
-              interactableMeshes.current.push(mesh);
+            // --- MAPPING MESH ---
+            if (name.includes('AN_VID_Slot8')) {
+               mesh.material = matSlot8;
+               interactableMeshes.current.push(mesh);
+            }
+            else if (name.includes('AN_VID_Slot9')) {
+               mesh.material = matSlot9;
+               interactableMeshes.current.push(mesh);
+            }
+            else if (name.includes('AN_VID_Slot5')) {
+               mesh.material = matSlot5;
+               interactableMeshes.current.push(mesh);
+            }
+            else if (name.includes('AN_VID_Slot6')) {
+               mesh.material = matSlot6;
+               interactableMeshes.current.push(mesh);
+            }
+            else if (name.includes('AN_VID_Slot7')) {
+               mesh.material = matSlot7;
+               interactableMeshes.current.push(mesh);
             }
 
-            // B. Logika Model Lama (Poster)
-            if (mesh.name.includes('IMG_Slot_1')) {
-              if (texturePoster) mesh.material = new THREE.MeshBasicMaterial({ map: texturePoster, side: THREE.DoubleSide });
-              interactableMeshes.current.push(mesh);
+            // Legacy Support (Model Lama)
+            else if (name.includes('VID_Slot_1') && images[0]) {
+               const t = setupTexture(images[0]);
+               t.rotation = 1.6; t.center.set(0.53, 0.4); t.repeat.set(5, 4);
+               t.wrapS = THREE.ClampToEdgeWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+               mesh.material = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide });
+               interactableMeshes.current.push(mesh);
             }
-
-            // C. [BARU] Logika Mesh "25"
-            // Kita gunakan exact match (===) atau includes tergantung kebutuhan
-            if (mesh.name === '17' || mesh.name.includes('17')) {
-               if (textureMesh17) {
-                  // Gunakan MeshBasicMaterial agar gambar terang (seperti layar)
-                  mesh.material = new THREE.MeshBasicMaterial({ map: textureMesh17, side: THREE.DoubleSide });
-               }
+            else if (name.includes('IMG_Slot_1') && images[1]) {
+               const t = setupTexture(images[1]);
+               mesh.material = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide });
                interactableMeshes.current.push(mesh);
             }
           }
         });
         scene.add(model);
-    }, undefined, (err) => console.error(err));
+    }, undefined, (err) => console.error("Error loading model:", err));
 
-    // --- 4. INTERAKSI ---
-    const updateMouseCoordinates = (clientX: number, clientY: number) => {
+    // 4. LOGIKA INTERAKSI
+    const updateMouse = (e: MouseEvent) => {
         if (!mountRef.current) return;
         const rect = mountRef.current.getBoundingClientRect();
-        mouse.current.x = ((clientX - rect.left) / rect.width) * 2 - 1;
-        mouse.current.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        mouse.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.current.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     };
 
-    const getIntersection = () => {
+    // Validasi Klik: Hanya jika slot ada gambarnya
+    const getHit = () => {
         if (!cameraRef.current || interactableMeshes.current.length === 0) return { hit: false, index: -1 };
         raycaster.current.setFromCamera(mouse.current, cameraRef.current);
-        const intersects = raycaster.current.intersectObjects(interactableMeshes.current);
+        const hits = raycaster.current.intersectObjects(interactableMeshes.current);
 
-        if (intersects.length > 0) {
-            const objectName = intersects[0].object.name;
+        if (hits.length > 0) {
+            const n = hits[0].object.name;
+            let targetIndex = -1;
 
-            // Interaksi Model Lama
-            if (objectName.includes('VID_Slot_1')) return { hit: true, index: 0 };
-            if (objectName.includes('IMG_Slot_1')) return { hit: true, index: 1 };
+            if (n.includes('AN_VID_Slot8') || n.includes('VID_Slot_1')) targetIndex = 0;
+            else if (n.includes('AN_VID_Slot9') || n.includes('IMG_Slot_1')) targetIndex = 1;
+            else if (n.includes('AN_VID_Slot5')) targetIndex = 2;
+            else if (n.includes('AN_VID_Slot6')) targetIndex = 3;
+            else if (n.includes('AN_VID_Slot7')) targetIndex = 4;
 
-            // [BARU] Interaksi Mesh "25" -> Return index 0 (karena menampilkan image[0])
-            if (objectName === '17' || objectName.includes('17')) return { hit: true, index: 0 };
+            // Validasi: Hanya return hit jika index valid DAN gambarnya ada
+            if (targetIndex !== -1 && images && images[targetIndex]) {
+                return { hit: true, index: targetIndex };
+            }
         }
         return { hit: false, index: -1 };
     };
@@ -169,9 +194,9 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
     const onMouseUp = (e: MouseEvent) => {
         isDragging.current = false;
         if (e.clientX === previousMousePosition.current.x && e.clientY === previousMousePosition.current.y) {
-            updateMouseCoordinates(e.clientX, e.clientY);
-            const { hit, index } = getIntersection();
-            if (hit && onClickRef.current) onClickRef.current(index); // Kirim Index
+            updateMouse(e);
+            const { hit, index } = getHit();
+            if (hit && onClickRef.current) onClickRef.current(index);
         }
     };
 
@@ -184,13 +209,14 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
         camera.rotation.x = Math.max(-1.4, Math.min(1.4, camera.rotation.x));
         previousMousePosition.current = { x: e.clientX, y: e.clientY };
       }
-      updateMouseCoordinates(e.clientX, e.clientY);
-      const { hit, index } = getIntersection();
+      updateMouse(e);
+      const { hit, index } = getHit();
+
+      // Kursor pointer hanya jika slot ada isinya
       if (onHoverRef.current) onHoverRef.current(hit, e.clientX, e.clientY, index);
       if (mountRef.current) mountRef.current.style.cursor = hit ? 'pointer' : (isDragging.current ? 'grabbing' : 'grab');
     };
 
-    // Keyboard Controls
     const onKeyDown = (e: KeyboardEvent) => {
       keysPressed.current[e.code] = true;
       if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) setActiveKey(e.code);
@@ -200,7 +226,6 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
       setActiveKey(null);
     };
 
-    // Event Listeners
     const canvas = renderer.domElement;
     canvas.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mouseup', onMouseUp);
@@ -208,24 +233,28 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
 
-    // Animation Loop
     const clock = new THREE.Clock();
     const animate = () => {
       requestRef.current = requestAnimationFrame(animate);
       const delta = clock.getDelta();
       const moveSpeed = 4.0 * delta;
-      const forward = new THREE.Vector3(); camera.getWorldDirection(forward); forward.y = 0; forward.normalize();
-      const right = new THREE.Vector3(); right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+      const forward = new THREE.Vector3();
+      camera.getWorldDirection(forward);
+      forward.y = 0;
+      forward.normalize();
+      const right = new THREE.Vector3();
+      right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
       if (keysPressed.current['KeyW'] || keysPressed.current['ArrowUp']) camera.position.add(forward.multiplyScalar(moveSpeed));
       if (keysPressed.current['KeyS'] || keysPressed.current['ArrowDown']) camera.position.add(forward.multiplyScalar(-moveSpeed));
       if (keysPressed.current['KeyD'] || keysPressed.current['ArrowRight']) camera.position.add(right.multiplyScalar(moveSpeed));
       if (keysPressed.current['KeyA'] || keysPressed.current['ArrowLeft']) camera.position.add(right.multiplyScalar(-moveSpeed));
+
       renderer.render(scene, camera);
     };
     animate();
 
-    // Resize Handler
     const handleResize = () => {
       if (!mountRef.current) return;
       const w = mountRef.current.clientWidth;
@@ -246,7 +275,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
     };
   }, [modelUrl, images]);
 
-  // UI Helpers (Buttons)
+  // UI Helper
   const handleBtnDown = (code: string) => { keysPressed.current[code] = true; setActiveKey(code); };
   const handleBtnUp = (code: string) => { keysPressed.current[code] = false; setActiveKey(null); };
   const btnClass = (key: string) => `w-12 h-12 flex items-center justify-center rounded-lg font-bold text-lg select-none transition-all duration-100 border-2 ${activeKey === key ? 'bg-blue-600 text-white border-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.6)] scale-95' : 'bg-black/40 text-white/90 border-white/20 hover:bg-black/60 backdrop-blur-md'}`;

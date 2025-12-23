@@ -32,24 +32,21 @@ type Comment = {
 const PRODI_CONFIG: { [key: string]: { name: string; model: string; theme: string; has3D: boolean } } = {
   if: { name: "D3 Teknik Informatika", model: "/models/booth_a.glb", theme: "from-blue-900/90", has3D: true },
   trm: { name: "D4 Teknologi Rekayasa Multimedia", model: "/models/booth_a.glb", theme: "from-purple-900/90", has3D: true },
+  // Pastikan nama file glb di sini sudah benar sesuai export terbaru Anda
+  rpl: { name: "D4 Rekayasa Perangkat Lunak", model: "/models/RPL.glb", theme: "from-cyan-900/90", has3D: true },
   cyber: { name: "D4 Keamanan Siber", model: "/models/qonita.glb", theme: "from-green-900/90", has3D: true },
   default: { name: "Program Studi", model: "", theme: "from-gray-900/90", has3D: false }
 };
 
-// --- [FIX] HELPER THUMBNAIL YOUTUBE (REGEX KUAT) ---
+// --- HELPER THUMBNAIL YOUTUBE ---
 const getYouTubeThumbnail = (url: string) => {
   let videoId = "";
-  // Regex untuk menangkap ID dari: youtu.be, youtube.com/watch?v=, /embed/, /v/
   const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
   const match = url.match(regex);
-
   if (match && match[1]) {
     videoId = match[1];
-    // Menggunakan 'hqdefault' agar gambar di 3D lebih jelas
     return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
   }
-
-  // Gambar fallback jika link rusak
   return "https://via.placeholder.com/640x360.png?text=Video+Tidak+Tersedia";
 };
 
@@ -87,14 +84,13 @@ export default function ProdiDetailPage() {
     }
   }, []);
 
-  // --- 2. FETCH PROJECTS ---
+  // --- 2. FETCH PROJECTS (UPDATE DI SINI) ---
   useEffect(() => {
     const fetchApprovedProject = async () => {
       try {
         const res = await fetch('http://localhost:5000/api/projects');
         const data = await res.json();
 
-        // Filter: Hanya APPROVED, sesuai PRODI, dan Tipe IMAGE/YOUTUBE
         const approvedList = data.filter((p: Project) =>
           p.status === 'APPROVED' &&
           (p.karya_type === 'IMAGE' || p.karya_type === 'YOUTUBE') &&
@@ -102,10 +98,12 @@ export default function ProdiDetailPage() {
         );
 
         if (approvedList.length > 0) {
-          setProjectsList(approvedList);
+          // [PENTING] Kita ambil sampai 5 karya karena ada 5 slot (8, 9, 5, 6, 7)
+          const limitedList = approvedList.slice(0, 5);
 
-          // [FIX] Gunakan fungsi helper getYouTubeThumbnail
-          const urls = approvedList.slice(0, 2).map((p: Project) => {
+          setProjectsList(limitedList);
+
+          const urls = limitedList.map((p: Project) => {
              if (p.karya_type === 'YOUTUBE') {
                 return getYouTubeThumbnail(p.karya_url);
              } else {
@@ -114,7 +112,7 @@ export default function ProdiDetailPage() {
           });
 
           setProjectImages(urls);
-          setDisplayProject(approvedList[0]);
+          setDisplayProject(limitedList[0]);
         } else {
           setProjectsList([]); setProjectImages([]); setDisplayProject(null);
         }
@@ -177,13 +175,15 @@ export default function ProdiDetailPage() {
   }, []);
 
   const handleClickScreen = useCallback((index: number) => {
-    if (projectsList[index]) {
+    // Validasi agar tidak error jika klik slot kosong
+    if (projectsList && projectsList[index]) {
       setDisplayProject(projectsList[index]);
       fetchComments(projectsList[index].id);
       setShowPreviewPopup(true);
     }
   }, [projectsList]);
 
+  // ... (Sisa return JSX sama seperti sebelumnya) ...
   return (
     <main className="flex min-h-screen flex-col font-sans relative overflow-hidden text-gray-800">
 
@@ -223,6 +223,7 @@ export default function ProdiDetailPage() {
                       <Scene3D modelUrl={config.model} images={projectImages} onHoverScreen={handleHoverScreen} onClickScreen={handleClickScreen} />
                     </Suspense>
                    </div>
+                   {/* Tooltip & Modal Logic Sama Saja */}
                    {hoverInfo.show && (
                       <div className="fixed pointer-events-none z-50 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-lg transform -translate-x-1/2 -translate-y-full mt-[-15px]" style={{ left: hoverInfo.x, top: hoverInfo.y }}>👆 Klik Detail</div>
                    )}
@@ -249,7 +250,7 @@ export default function ProdiDetailPage() {
               )}
             </div>
 
-            {/* --- MODAL DETAIL --- */}
+            {/* --- MODAL DETAIL (Copy paste dari sebelumnya, tidak berubah) --- */}
             {showDetailModal && displayProject && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in duration-300">
                 {showSuccessToast && (
@@ -269,7 +270,7 @@ export default function ProdiDetailPage() {
                       <button onClick={() => setShowDetailModal(false)} className="md:hidden text-gray-400 text-3xl">&times;</button>
                     </div>
 
-                    {/* MEDIA PREVIEW (IFRAME ATAU IMAGE) */}
+                    {/* MEDIA PREVIEW */}
                     <div className="aspect-video relative rounded-xl overflow-hidden shadow-lg mb-4 bg-black">
                       {displayProject.karya_type === 'YOUTUBE' ? (
                          <iframe
