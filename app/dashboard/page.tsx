@@ -11,7 +11,7 @@ type Project = {
   description: string;
   nama_ketua: string;
   nim_ketua: string;
-  prodi: string; // [BARU] Tambah field prodi
+  prodi: string;
   karya_type: 'IMAGE' | 'PDF' | 'YOUTUBE';
   karya_url: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
@@ -90,13 +90,22 @@ export default function DashboardPage() {
     else setOpenActionId(id);
   };
 
-  // Helper untuk Thumbnail YouTube
+  // [PERBAIKAN] Helper Thumbnail YouTube yang Lebih Kuat (Regex)
   const getYouTubeThumb = (url: string) => {
-    const vidId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-    return `https://img.youtube.com/vi/${vidId}/default.jpg`;
+    let videoId = "";
+    // Regex untuk menangkap ID dari link biasa, short link, atau embed
+    const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+    const match = url.match(regex);
+
+    if (match && match[1]) {
+      videoId = match[1];
+      // Gunakan mqdefault (Medium Quality) karena hqdefault kadang tidak tersedia di beberapa video
+      return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+    }
+    // Gambar Fallback jika link rusak
+    return "https://via.placeholder.com/150/000000/FFFFFF/?text=No+Thumbnail";
   };
 
-  // Badge Status
   const StatusBadge = ({ status }: { status: string }) => {
     let styles = "bg-gray-100 text-gray-600 border-gray-200";
     let label = "Pending";
@@ -140,6 +149,7 @@ export default function DashboardPage() {
           {userRole !== 'admin' && <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">View Mode: User</span>}
         </div>
 
+        {/* Statistik */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
            <StatCard title="Total" count={stats.total} color="bg-blue-500" />
            <StatCard title="Pending" count={stats.pending} color="bg-yellow-500" />
@@ -147,6 +157,7 @@ export default function DashboardPage() {
            <StatCard title="Rejected" count={stats.rejected} color="bg-red-500" />
         </div>
 
+        {/* Filter Tabs */}
         <div className="flex space-x-2 mb-6 border-b border-gray-200 pb-1">
           {['ALL', 'PENDING', 'APPROVED', 'REJECTED'].map((status) => (
              <button key={status} onClick={() => setFilterStatus(status as any)} className={`px-4 py-2 text-sm font-bold rounded-t-lg transition-colors ${filterStatus === status ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'}`}>
@@ -155,6 +166,7 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* Table Container */}
         <div className="bg-white shadow-sm border border-gray-200 rounded-xl overflow-hidden min-h-[400px]">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50/50">
@@ -175,12 +187,18 @@ export default function DashboardPage() {
                     <tr key={project.id} className="hover:bg-blue-50/30 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center">
-                           <div className="flex-shrink-0 h-12 w-12 rounded-lg overflow-hidden bg-gray-200 border border-gray-200">
+                           <div className="flex-shrink-0 h-12 w-12 rounded-lg overflow-hidden bg-gray-200 border border-gray-200 relative">
                               {/* THUMBNAIL (IMAGE ATAU YOUTUBE) */}
                               {project.karya_type === 'IMAGE' ? (
-                                <Image src={`http://localhost:5000/${project.karya_url}`} alt="Thumb" width={48} height={48} className="object-cover w-full h-full" unoptimized />
+                                <Image src={`http://localhost:5000/${project.karya_url}`} alt="Thumb" fill className="object-cover" unoptimized />
                               ) : project.karya_type === 'YOUTUBE' ? (
-                                <Image src={getYouTubeThumb(project.karya_url)} alt="YT" width={48} height={48} className="object-cover w-full h-full" unoptimized />
+                                <Image
+                                  src={getYouTubeThumb(project.karya_url)}
+                                  alt="YT Thumb"
+                                  fill
+                                  className="object-cover"
+                                  unoptimized // Penting agar bisa load dari domain luar (youtube)
+                                />
                               ) : (
                                 <div className="flex items-center justify-center h-full text-[10px] font-bold text-gray-500 bg-orange-100">PDF</div>
                               )}
@@ -195,8 +213,7 @@ export default function DashboardPage() {
                          <div className="flex flex-col">
                             <div className="text-sm font-bold text-gray-900">{project.nama_ketua}</div>
                             <div className="text-xs text-gray-500 mb-1">NIM: {project.nim_ketua}</div>
-                            {/* KOLOM PRODI */}
-                            <div className="text-[10px] font-bold text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded w-fit">{project.prodi || 'Tidak ada data'}</div>
+                            <div className="text-[10px] font-bold text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded w-fit">{project.prodi || 'Unassigned'}</div>
                          </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -250,17 +267,16 @@ export default function DashboardPage() {
                   <p className="text-blue-800 text-sm leading-relaxed whitespace-pre-line">{selectedProject.description}</p>
               </div>
 
-              <div className="w-full bg-gray-900 rounded-xl overflow-hidden shadow-lg mb-4">
+              {/* MEDIA VIEWER */}
+              <div className="w-full bg-gray-900 rounded-xl overflow-hidden shadow-lg mb-4 aspect-video relative">
                 {selectedProject.karya_type === 'IMAGE' && (
-                  <div className="relative w-full h-[500px]">
-                    <Image src={`http://localhost:5000/${selectedProject.karya_url}`} alt="Preview" fill className="object-contain" unoptimized />
-                  </div>
+                  <Image src={`http://localhost:5000/${selectedProject.karya_url}`} alt="Preview" fill className="object-contain" unoptimized />
                 )}
                 {selectedProject.karya_type === 'YOUTUBE' && (
-                  <iframe width="100%" height="500" src={selectedProject.karya_url.replace('watch?v=', 'embed/').split('&')[0]} title="YT" frameBorder="0" allowFullScreen></iframe>
+                  <iframe width="100%" height="100%" src={selectedProject.karya_url.replace('watch?v=', 'embed/').split('&')[0]} title="YT" frameBorder="0" allowFullScreen className="absolute inset-0"></iframe>
                 )}
                 {selectedProject.karya_type === 'PDF' && (
-                  <iframe src={`http://localhost:5000/${selectedProject.karya_url}`} className="w-full h-[600px]" title="PDF"></iframe>
+                  <iframe src={`http://localhost:5000/${selectedProject.karya_url}`} className="w-full h-full" title="PDF"></iframe>
                 )}
               </div>
 

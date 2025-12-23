@@ -36,6 +36,23 @@ const PRODI_CONFIG: { [key: string]: { name: string; model: string; theme: strin
   default: { name: "Program Studi", model: "", theme: "from-gray-900/90", has3D: false }
 };
 
+// --- [FIX] HELPER THUMBNAIL YOUTUBE (REGEX KUAT) ---
+const getYouTubeThumbnail = (url: string) => {
+  let videoId = "";
+  // Regex untuk menangkap ID dari: youtu.be, youtube.com/watch?v=, /embed/, /v/
+  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const match = url.match(regex);
+
+  if (match && match[1]) {
+    videoId = match[1];
+    // Menggunakan 'hqdefault' agar gambar di 3D lebih jelas
+    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  }
+
+  // Gambar fallback jika link rusak
+  return "https://via.placeholder.com/640x360.png?text=Video+Tidak+Tersedia";
+};
+
 export default function ProdiDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -76,23 +93,25 @@ export default function ProdiDetailPage() {
       try {
         const res = await fetch('http://localhost:5000/api/projects');
         const data = await res.json();
+
+        // Filter: Hanya APPROVED, sesuai PRODI, dan Tipe IMAGE/YOUTUBE
         const approvedList = data.filter((p: Project) =>
           p.status === 'APPROVED' &&
-          (p.karya_type === 'IMAGE' || p.karya_type === 'YOUTUBE') && // Izinkan YouTube
+          (p.karya_type === 'IMAGE' || p.karya_type === 'YOUTUBE') &&
           p.prodi === config.name
         );
 
         if (approvedList.length > 0) {
           setProjectsList(approvedList);
-          // Helper untuk thumbnail youtube sederhana
-          const getThumb = (url: string) => {
-             const vidId = url.split('v=')[1]?.split('&')[0] || url.split('/').pop();
-             return `https://img.youtube.com/vi/${vidId}/hqdefault.jpg`;
-          };
 
-          const urls = approvedList.slice(0, 2).map((p: Project) =>
-             p.karya_type === 'YOUTUBE' ? getThumb(p.karya_url) : `http://localhost:5000/${p.karya_url}`
-          );
+          // [FIX] Gunakan fungsi helper getYouTubeThumbnail
+          const urls = approvedList.slice(0, 2).map((p: Project) => {
+             if (p.karya_type === 'YOUTUBE') {
+                return getYouTubeThumbnail(p.karya_url);
+             } else {
+                return `http://localhost:5000/${p.karya_url}`;
+             }
+          });
 
           setProjectImages(urls);
           setDisplayProject(approvedList[0]);
@@ -250,7 +269,7 @@ export default function ProdiDetailPage() {
                       <button onClick={() => setShowDetailModal(false)} className="md:hidden text-gray-400 text-3xl">&times;</button>
                     </div>
 
-                    {/* MEDIA PREVIEW */}
+                    {/* MEDIA PREVIEW (IFRAME ATAU IMAGE) */}
                     <div className="aspect-video relative rounded-xl overflow-hidden shadow-lg mb-4 bg-black">
                       {displayProject.karya_type === 'YOUTUBE' ? (
                          <iframe
@@ -264,7 +283,7 @@ export default function ProdiDetailPage() {
                       )}
                     </div>
 
-                    {/* [BARU] TOMBOL BUKA YOUTUBE */}
+                    {/* TOMBOL YOUTUBE */}
                     {displayProject.karya_type === 'YOUTUBE' && (
                         <a
                           href={displayProject.karya_url}
