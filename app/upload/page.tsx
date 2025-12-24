@@ -20,9 +20,9 @@ const PRODI_OPTIONS = [
   "D4 Keamanan Siber",
   "D4 Animasi",
   "D4 Rekayasa Perangkat Lunak",
-  "D3 Teknik Elektronika",
-  "D4 Mekatronika",
-  "D3 Akuntansi"
+  "D3 Teknik Permainan",
+  "D4 Teknik Geomatika",
+  "Magister Teknik Komputer"
 ];
 
 export default function UploadPage() {

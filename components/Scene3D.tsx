@@ -7,16 +7,17 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 interface Scene3DProps {
   modelUrl: string;
   images: string[];
-  // Callback interaksi
+  // Terima daftar slot dari Parent (page.tsx) agar dinamis tiap Prodi
+  slotNames: string[];
   onHoverScreen?: (isHovering: boolean, x: number, y: number, index: number) => void;
   onClickScreen?: (index: number) => void;
 }
 
-const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onClickScreen }) => {
+const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, slotNames, onHoverScreen, onClickScreen }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef<number>();
 
-  // State & Refs
+  // State & Refs untuk Logika
   const keysPressed = useRef<{ [key: string]: boolean }>({});
   const isDragging = useRef(false);
   const previousMousePosition = useRef({ x: 0, y: 0 });
@@ -25,7 +26,7 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
   const interactableMeshes = useRef<THREE.Mesh[]>([]);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
 
-  // Refs untuk callback agar tidak re-render
+  // Refs callback (mencegah re-render berlebih)
   const onHoverRef = useRef(onHoverScreen);
   const onClickRef = useRef(onClickScreen);
 
@@ -39,7 +40,9 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
   useEffect(() => {
     if (!mountRef.current) return;
 
-    // 1. SETUP SCENE
+    // ==========================================
+    // 1. SETUP DASAR (Scene, Camera, Renderer)
+    // ==========================================
     const width = mountRef.current.clientWidth;
     const height = mountRef.current.clientHeight;
     const scene = new THREE.Scene();
@@ -56,32 +59,39 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.outputColorSpace = THREE.SRGBColorSpace; // PENTING: Warna akurat
+    // PENTING: Agar warna gambar tidak pucat
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     mountRef.current.innerHTML = '';
     mountRef.current.appendChild(renderer.domElement);
 
-    // 2. LIGHTING
+    // ==========================================
+    // 2. PENCAHAYAAN
+    // ==========================================
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     scene.add(ambientLight);
     const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
     sunLight.position.set(10, 20, 10);
     sunLight.castShadow = true;
     scene.add(sunLight);
+
+    // Grid Helper (Opsional, matikan jika tidak perlu)
     const grid = new THREE.GridHelper(100, 100, 0x555555, 0x999999);
     grid.position.y = -0.01;
     scene.add(grid);
 
-    // 3. LOAD MODEL & TEXTURE
+    // ==========================================
+    // 3. LOAD MODEL & TEMPEL GAMBAR
+    // ==========================================
     const loader = new GLTFLoader();
     const textureLoader = new THREE.TextureLoader();
     textureLoader.setCrossOrigin('anonymous');
     interactableMeshes.current = [];
 
-    // Material untuk layar kosong (HITAM)
-    const emptyMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+    // Material Hitam (Jika slot lebih banyak dari jumlah karya)
+    const blackMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
 
-    // Helper: Setup Texture Standar
+    // Helper: Setup Texture
     const setupTexture = (url: string) => {
         const tex = textureLoader.load(url);
         tex.flipY = false; // Standar GLTF
@@ -89,73 +99,66 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
         return tex;
     };
 
-    // Helper: Ambil material unik (TANPA PENGULANGAN)
-    const getUniqueMaterial = (index: number) => {
-        // Jika tidak ada gambar di index ini, return hitam
-        if (!images || !images[index]) return emptyMaterial;
-
-        const tex = setupTexture(images[index]);
-        return new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+    // Helper: Buat Material berdasarkan Index Urutan
+    const getMaterialForSlot = (slotIndex: number) => {
+        // Cek apakah ada gambar di index ini?
+        if (images && images[slotIndex]) {
+            const tex = setupTexture(images[slotIndex]);
+            return new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+        }
+        // Jika tidak ada gambar, return Hitam
+        return blackMaterial;
     };
 
     loader.load(modelUrl, (gltf) => {
         const model = gltf.scene;
-        console.log("✅ Model Loaded. Mapping slots uniquely...");
 
-        // Mapping 1-on-1 (Index 0 ke Slot 8, Index 1 ke Slot 9, dst)
-        const matSlot8 = getUniqueMaterial(0);
-        const matSlot9 = getUniqueMaterial(1);
-        const matSlot5 = getUniqueMaterial(2);
-        const matSlot6 = getUniqueMaterial(3);
-        const matSlot7 = getUniqueMaterial(4);
+        // --- FITUR DEBUGGING OTOMATIS ---
+        console.group(`🔍 Debug Model: ${modelUrl}`);
+        console.log("Daftar Mesh yang ditemukan:");
+        // Mencetak semua nama mesh ke Console agar Anda bisa copy-paste untuk config
+        model.traverse((node) => {
+            if ((node as THREE.Mesh).isMesh) {
+                console.log(`- ${node.name}`);
+            }
+        });
+        console.groupEnd();
+        // --------------------------------
 
-        // Traverse Model
+        // 1. Siapkan Material
+        // Kita buat daftar material sesuai urutan slotNames yang dikirim dari page.tsx
+        const currentSlotNames = slotNames || [];
+        const materials = currentSlotNames.map((_, index) => getMaterialForSlot(index));
+
+        // 2. Traverse (Telusuri) Model untuk menempelkan material
         model.traverse((node) => {
           if ((node as THREE.Mesh).isMesh) {
             const mesh = node as THREE.Mesh;
             const name = mesh.name;
 
-            // --- MAPPING MESH ---
-            if (name.includes('AN_VID_Slot8')) {
-               mesh.material = matSlot8;
-               interactableMeshes.current.push(mesh);
-            }
-            else if (name.includes('AN_VID_Slot9')) {
-               mesh.material = matSlot9;
-               interactableMeshes.current.push(mesh);
-            }
-            else if (name.includes('AN_VID_Slot5')) {
-               mesh.material = matSlot5;
-               interactableMeshes.current.push(mesh);
-            }
-            else if (name.includes('AN_VID_Slot6')) {
-               mesh.material = matSlot6;
-               interactableMeshes.current.push(mesh);
-            }
-            else if (name.includes('AN_VID_Slot7')) {
-               mesh.material = matSlot7;
-               interactableMeshes.current.push(mesh);
-            }
+            // Cek apakah nama mesh ini ada di daftar slotNames
+            // Kita gunakan 'includes' agar jika nama di blender "AN_VID_Slot1.001" tetap terdeteksi
+            const slotIndex = currentSlotNames.findIndex(slotName => name.includes(slotName));
 
-            // Legacy Support (Model Lama)
-            else if (name.includes('VID_Slot_1') && images[0]) {
-               const t = setupTexture(images[0]);
-               t.rotation = 1.6; t.center.set(0.53, 0.4); t.repeat.set(5, 4);
-               t.wrapS = THREE.ClampToEdgeWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
-               mesh.material = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide });
-               interactableMeshes.current.push(mesh);
-            }
-            else if (name.includes('IMG_Slot_1') && images[1]) {
-               const t = setupTexture(images[1]);
-               mesh.material = new THREE.MeshBasicMaterial({ map: t, side: THREE.DoubleSide });
+            if (slotIndex !== -1) {
+               // Ketemu! Pasang material sesuai urutan
+               mesh.material = materials[slotIndex];
+
+               // Simpan index ini di mesh agar bisa dideteksi saat diklik
+               mesh.userData = { slotIndex: slotIndex };
+
                interactableMeshes.current.push(mesh);
             }
           }
         });
         scene.add(model);
-    }, undefined, (err) => console.error("Error loading model:", err));
+    }, undefined, (err) => {
+        console.error("❌ Gagal memuat model:", err);
+    });
 
-    // 4. LOGIKA INTERAKSI
+    // ==========================================
+    // 4. LOGIKA INTERAKSI (KLIK & HOVER)
+    // ==========================================
     const updateMouse = (e: MouseEvent) => {
         if (!mountRef.current) return;
         const rect = mountRef.current.getBoundingClientRect();
@@ -163,33 +166,24 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
         mouse.current.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     };
 
-    // Validasi Klik: Hanya jika slot ada gambarnya
     const getHit = () => {
         if (!cameraRef.current || interactableMeshes.current.length === 0) return { hit: false, index: -1 };
         raycaster.current.setFromCamera(mouse.current, cameraRef.current);
         const hits = raycaster.current.intersectObjects(interactableMeshes.current);
 
         if (hits.length > 0) {
-            const n = hits[0].object.name;
-            let targetIndex = -1;
+            const hitMesh = hits[0].object;
+            const index = hitMesh.userData.slotIndex;
 
-            if (n.includes('AN_VID_Slot8') || n.includes('VID_Slot_1')) targetIndex = 0;
-            else if (n.includes('AN_VID_Slot9') || n.includes('IMG_Slot_1')) targetIndex = 1;
-            else if (n.includes('AN_VID_Slot5')) targetIndex = 2;
-            else if (n.includes('AN_VID_Slot6')) targetIndex = 3;
-            else if (n.includes('AN_VID_Slot7')) targetIndex = 4;
-
-            // Validasi: Hanya return hit jika index valid DAN gambarnya ada
-            if (targetIndex !== -1 && images && images[targetIndex]) {
-                return { hit: true, index: targetIndex };
+            // Validasi: Hanya bisa diklik jika index valid DAN gambarnya benar-benar ada
+            if (typeof index === 'number' && images && images[index]) {
+                return { hit: true, index: index };
             }
         }
         return { hit: false, index: -1 };
     };
 
-    const onMouseDown = (e: MouseEvent) => {
-      if (e.button === 0) { isDragging.current = true; previousMousePosition.current = { x: e.clientX, y: e.clientY }; }
-    };
+    const onMouseDown = (e: MouseEvent) => { if (e.button === 0) { isDragging.current = true; previousMousePosition.current = { x: e.clientX, y: e.clientY }; } };
 
     const onMouseUp = (e: MouseEvent) => {
         isDragging.current = false;
@@ -212,44 +206,40 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
       updateMouse(e);
       const { hit, index } = getHit();
 
-      // Kursor pointer hanya jika slot ada isinya
+      // Ubah kursor jadi pointer hanya jika mengarah ke bingkai yang ADA GAMBARNYA
       if (onHoverRef.current) onHoverRef.current(hit, e.clientX, e.clientY, index);
       if (mountRef.current) mountRef.current.style.cursor = hit ? 'pointer' : (isDragging.current ? 'grabbing' : 'grab');
     };
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      keysPressed.current[e.code] = true;
-      if (['KeyW', 'KeyA', 'KeyS', 'KeyD'].includes(e.code)) setActiveKey(e.code);
-    };
-    const onKeyUp = (e: KeyboardEvent) => {
-      keysPressed.current[e.code] = false;
-      setActiveKey(null);
+    // ==========================================
+    // 5. ANIMASI & KONTROL KEYBOARD
+    // ==========================================
+    const onKey = (e: KeyboardEvent, down: boolean) => {
+        keysPressed.current[e.code] = down;
+        if(['KeyW','KeyA','KeyS','KeyD'].includes(e.code)) setActiveKey(down ? e.code : null);
     };
 
     const canvas = renderer.domElement;
     canvas.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mouseup', onMouseUp);
     canvas.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('keydown', (e) => onKey(e, true));
+    window.addEventListener('keyup', (e) => onKey(e, false));
 
-    const clock = new THREE.Clock();
     const animate = () => {
       requestRef.current = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
+      const delta = 0.02; // Fixed delta agar kecepatan konsisten
       const moveSpeed = 4.0 * delta;
 
       const forward = new THREE.Vector3();
-      camera.getWorldDirection(forward);
-      forward.y = 0;
-      forward.normalize();
+      camera.getWorldDirection(forward); forward.y = 0; forward.normalize();
       const right = new THREE.Vector3();
       right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
-      if (keysPressed.current['KeyW'] || keysPressed.current['ArrowUp']) camera.position.add(forward.multiplyScalar(moveSpeed));
-      if (keysPressed.current['KeyS'] || keysPressed.current['ArrowDown']) camera.position.add(forward.multiplyScalar(-moveSpeed));
-      if (keysPressed.current['KeyD'] || keysPressed.current['ArrowRight']) camera.position.add(right.multiplyScalar(moveSpeed));
-      if (keysPressed.current['KeyA'] || keysPressed.current['ArrowLeft']) camera.position.add(right.multiplyScalar(-moveSpeed));
+      if (keysPressed.current['KeyW']) camera.position.add(forward.multiplyScalar(moveSpeed));
+      if (keysPressed.current['KeyS']) camera.position.add(forward.multiplyScalar(-moveSpeed));
+      if (keysPressed.current['KeyD']) camera.position.add(right.multiplyScalar(moveSpeed));
+      if (keysPressed.current['KeyA']) camera.position.add(right.multiplyScalar(-moveSpeed));
 
       renderer.render(scene, camera);
     };
@@ -268,14 +258,17 @@ const Scene3D: React.FC<Scene3DProps> = ({ modelUrl, images, onHoverScreen, onCl
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mouseup', onMouseUp);
       canvas.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('keydown', (e) => onKey(e, true));
+      window.removeEventListener('keyup', (e) => onKey(e, false));
       canvas.removeEventListener('mousedown', onMouseDown);
       renderer.dispose();
     };
-  }, [modelUrl, images]);
+  }, [modelUrl, images, slotNames]);
+  // useEffect akan jalan ulang jika modelUrl atau daftar slotNames berubah
 
-  // UI Helper
+  // ==========================================
+  // 6. UI TOMBOL VIRTUAL
+  // ==========================================
   const handleBtnDown = (code: string) => { keysPressed.current[code] = true; setActiveKey(code); };
   const handleBtnUp = (code: string) => { keysPressed.current[code] = false; setActiveKey(null); };
   const btnClass = (key: string) => `w-12 h-12 flex items-center justify-center rounded-lg font-bold text-lg select-none transition-all duration-100 border-2 ${activeKey === key ? 'bg-blue-600 text-white border-blue-400 shadow-[0_0_15px_rgba(37,99,235,0.6)] scale-95' : 'bg-black/40 text-white/90 border-white/20 hover:bg-black/60 backdrop-blur-md'}`;
