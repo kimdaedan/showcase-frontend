@@ -17,12 +17,27 @@ type Project = {
   created_at: string;
 };
 
+// --- HELPER UNTUK AMBIL THUMBNAIL YOUTUBE ---
+const getYouTubeThumbnail = (url: string) => {
+  let videoId = "";
+  // Regex kuat untuk menangkap ID dari berbagai format link YouTube
+  const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
+  const match = url.match(regex);
+
+  if (match && match[1]) {
+    videoId = match[1];
+    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  }
+
+  // Gambar fallback jika link error
+  return "https://via.placeholder.com/640x360.png?text=No+Thumbnail";
+};
+
 export default function ManagePage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
-  // State untuk Dropdown Menu per Item
   const [openActionId, setOpenActionId] = useState<number | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -84,7 +99,6 @@ export default function ManagePage() {
     else setOpenActionId(id);
   };
 
-  // Badge Status dengan Ikon
   const StatusBadge = ({ status }: { status: string }) => {
     let color = 'bg-gray-100 text-gray-600 border-gray-200';
     let icon = '⏳';
@@ -137,7 +151,6 @@ export default function ManagePage() {
              {[1,2,3].map(i => <div key={i} className="h-64 bg-gray-200 rounded-xl animate-pulse"></div>)}
           </div>
         ) : projects.length === 0 ? (
-          /* Empty State Modern */
           <div className="bg-white rounded-2xl shadow-sm border border-dashed border-gray-300 p-12 text-center flex flex-col items-center">
             <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4">
                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -149,28 +162,40 @@ export default function ManagePage() {
             <button onClick={() => router.push('/upload')} className="text-blue-600 font-bold hover:underline">Mulai Upload Sekarang &rarr;</button>
           </div>
         ) : (
-          /* Card Grid Layout */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {projects.map((project) => {
               const isEditLocked = project.status === 'APPROVED' || project.status === 'REJECTED';
               const isDeleteLocked = project.status === 'APPROVED';
 
               return (
-                <div key={project.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden flex flex-col">
+                <div key={project.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden flex flex-col group">
 
-                  {/* Thumbnail Image */}
-                  <div className="relative h-48 w-full bg-gray-100 border-b border-gray-100">
-                     {project.karya_type === 'IMAGE' ? (
-                        <Image src={`http://localhost:5000/${project.karya_url}`} alt="Thumb" fill className="object-cover" unoptimized/>
-                     ) : (
-                        <div className="flex items-center justify-center h-full text-gray-400 font-medium">
-                           {project.karya_type === 'YOUTUBE' ? '▶️ Video YouTube' : '📄 Dokumen PDF'}
-                        </div>
-                     )}
-                     <div className="absolute top-3 left-3">
-                        <StatusBadge status={project.status || 'PENDING'} />
-                     </div>
+                  {/* --- [UPDATE] THUMBNAIL LOGIC --- */}
+                  <div className="relative h-48 w-full bg-gray-100 border-b border-gray-100 overflow-hidden">
+                      {project.karya_type === 'IMAGE' ? (
+                         <Image src={`http://localhost:5000/${project.karya_url}`} alt="Thumb" fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized/>
+                      ) : project.karya_type === 'YOUTUBE' ? (
+                         <>
+                           {/* Tampilkan Thumbnail YouTube */}
+                           <Image src={getYouTubeThumbnail(project.karya_url)} alt="YT Thumb" fill className="object-cover transition-transform duration-500 group-hover:scale-105" unoptimized/>
+                           {/* Icon Play Overlay */}
+                           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+                              <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center shadow-lg">
+                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white ml-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg>
+                              </div>
+                           </div>
+                         </>
+                      ) : (
+                         <div className="flex flex-col items-center justify-center h-full text-gray-400 font-medium bg-gray-50">
+                            <span className="text-4xl mb-2">📄</span>
+                            <span className="text-xs font-bold">Dokumen PDF</span>
+                         </div>
+                      )}
+                      <div className="absolute top-3 left-3 z-10">
+                         <StatusBadge status={project.status || 'PENDING'} />
+                      </div>
                   </div>
+                  {/* -------------------------------- */}
 
                   {/* Card Body */}
                   <div className="p-5 flex flex-col flex-grow">
@@ -178,52 +203,52 @@ export default function ManagePage() {
                     <p className="text-xs text-gray-500 mb-4">{new Date(project.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
 
                     <div className="flex items-center gap-3 text-sm text-gray-600 mb-4 bg-gray-50 p-2 rounded-lg">
-                       <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
-                          {project.nama_ketua.charAt(0)}
-                       </div>
-                       <div className="flex flex-col">
-                          <span className="font-bold text-xs text-gray-900">{project.nama_ketua}</span>
-                          <span className="text-[10px] text-gray-500">NIM: {project.nim_ketua}</span>
-                       </div>
+                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+                           {project.nama_ketua.charAt(0)}
+                        </div>
+                        <div className="flex flex-col">
+                           <span className="font-bold text-xs text-gray-900">{project.nama_ketua}</span>
+                           <span className="text-[10px] text-gray-500">NIM: {project.nim_ketua}</span>
+                        </div>
                     </div>
 
                     {/* Action Footer */}
                     <div className="mt-auto flex justify-between items-center pt-4 border-t border-gray-100 relative">
-                       <button onClick={() => setSelectedProject(project)} className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">
-                          Lihat Detail
-                       </button>
+                        <button onClick={() => setSelectedProject(project)} className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                           Lihat Detail
+                        </button>
 
-                       {/* Dropdown Menu Trigger */}
-                       <div className="relative">
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleActionMenu(project.id); }}
-                            className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
-                          >
-                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
-                             </svg>
-                          </button>
+                        {/* Dropdown Menu Trigger */}
+                        <div className="relative">
+                           <button
+                             onClick={(e) => { e.stopPropagation(); toggleActionMenu(project.id); }}
+                             className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-600"
+                           >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                 <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                              </svg>
+                           </button>
 
-                          {openActionId === project.id && (
-                            <div ref={dropdownRef} className="absolute bottom-full right-0 mb-2 w-40 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20 animate-in fade-in zoom-in duration-200">
-                               <button
-                                 onClick={() => router.push(`/manage/edit/${project.id}`)}
-                                 disabled={isEditLocked}
-                                 className={`w-full text-left px-4 py-3 text-sm font-medium flex items-center gap-2 ${isEditLocked ? 'text-gray-400 bg-gray-50 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'}`}
-                               >
+                           {openActionId === project.id && (
+                             <div ref={dropdownRef} className="absolute bottom-full right-0 mb-2 w-40 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-20 animate-in fade-in zoom-in duration-200">
+                                <button
+                                  onClick={() => router.push(`/manage/edit/${project.id}`)}
+                                  disabled={isEditLocked}
+                                  className={`w-full text-left px-4 py-3 text-sm font-medium flex items-center gap-2 ${isEditLocked ? 'text-gray-400 bg-gray-50 cursor-not-allowed' : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'}`}
+                                >
                                   ✏️ Edit Data
-                               </button>
-                               <div className="border-t border-gray-100"></div>
-                               <button
-                                 onClick={() => handleDelete(project)}
-                                 disabled={isDeleteLocked}
-                                 className={`w-full text-left px-4 py-3 text-sm font-medium flex items-center gap-2 ${isDeleteLocked ? 'text-gray-400 bg-gray-50 cursor-not-allowed' : 'text-red-600 hover:bg-red-50'}`}
-                               >
+                                </button>
+                                <div className="border-t border-gray-100"></div>
+                                <button
+                                  onClick={() => handleDelete(project)}
+                                  disabled={isDeleteLocked}
+                                  className={`w-full text-left px-4 py-3 text-sm font-medium flex items-center gap-2 ${isDeleteLocked ? 'text-gray-400 bg-gray-50 cursor-not-allowed' : 'text-red-600 hover:bg-red-50'}`}
+                                >
                                   🗑️ Hapus
-                               </button>
-                            </div>
-                          )}
-                       </div>
+                                </button>
+                             </div>
+                           )}
+                        </div>
                     </div>
                   </div>
                 </div>
@@ -233,7 +258,7 @@ export default function ManagePage() {
         )}
       </div>
 
-      {/* Modal Detail (Modern Style) */}
+      {/* Modal Detail */}
       {selectedProject && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative ring-1 ring-white/20">
