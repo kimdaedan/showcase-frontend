@@ -9,7 +9,7 @@ export default function HomePage() {
   // --- STATE UNTUK VIDEO YOUTUBE ---
   const [isVideoOpen, setIsVideoOpen] = useState(false);
   // ID Video Youtube
-  const YOUTUBE_VIDEO_ID = "MqazV4hbu8E?si=rJ6yE8e-khotI7Z2";
+  const YOUTUBE_VIDEO_ID = "W1DwJvEOid8?si=ioh-n0GJ_oA3j9du";
 
   // --- STATE TYPING EFFECT ---
   const [displayText, setDisplayText] = useState("");
